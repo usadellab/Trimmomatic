@@ -21,6 +21,7 @@ public class FastqParser {
     private int phredOffset;
     private ArrayDeque<FastqRecord> deque;
     int qualHistogram[];
+    int patternHistogram[];
     
     private PositionTrackingInputStream posTrackInputStream;
     private BufferedReader reader;
@@ -68,8 +69,12 @@ public class FastqParser {
         }
 
         sequence = reader.readLine();
+        if(sequence==null)
+        	throw new RuntimeException("Missing sequence line from record: " + name);
 
         line = reader.readLine();
+        if(line==null)
+        	throw new RuntimeException("Missing comment line from record: " + name);
 
         if (line.charAt(0)=='+') {
             comment = line.substring(1);
@@ -77,7 +82,10 @@ public class FastqParser {
             throw new RuntimeException("Invalid FASTQ comment line: " + line);
         }
 
-        quality = reader.readLine();        
+        quality = reader.readLine();
+        if(quality==null)
+        	throw new RuntimeException("Missing quality line from record: " + name);
+
         current = new FastqRecord(name, sequence, comment, quality, phredOffset);
     }
 

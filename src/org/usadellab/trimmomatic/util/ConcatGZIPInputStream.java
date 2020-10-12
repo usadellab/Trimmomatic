@@ -49,6 +49,16 @@ public class ConcatGZIPInputStream extends InputStream
 	@Override
 	public int read() throws IOException
 	{
+		int res=-1;
+		
+		while(res==-1 && gzIn!=null)
+			{
+			res=gzIn.read();
+			if(res==-1)
+				nextGzipInputStream();
+			}
+	
+		/*
 		if(gzIn==null)
 			return -1;
 	
@@ -61,13 +71,24 @@ public class ConcatGZIPInputStream extends InputStream
 			else
 				res=gzIn.read();
 			}
-	
+	*/
+		
 		return res;
 	}
 
 	@Override
 	public int read(byte[] b, int off, int len) throws IOException
 	{
+		int res=-1;
+	
+		while(res==-1 && gzIn!=null)
+			{
+			res=gzIn.read(b,off,len);
+			if(res==-1)
+				nextGzipInputStream();
+			}
+	
+	/*
 		if(gzIn==null)
 			return -1;
 	
@@ -80,13 +101,24 @@ public class ConcatGZIPInputStream extends InputStream
 			else
 				res=gzIn.read(b, off, len);
 			}
-		
+		*/
+	
 		return res;
 	}
 
 	@Override
 	public int read(byte[] b) throws IOException
 	{
+		int res=-1;
+	
+		while(res==-1 && gzIn!=null)
+			{
+			res=gzIn.read(b);
+			if(res==-1)
+				nextGzipInputStream();
+			}
+	
+	/*
 		if(gzIn==null)
 			return -1;
 	
@@ -99,6 +131,8 @@ public class ConcatGZIPInputStream extends InputStream
 			else
 				res=gzIn.read(b);
 			}	
+		*/
+
 		return res;	
 	}
 

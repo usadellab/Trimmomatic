@@ -28,7 +28,7 @@ public class FastqRecord
 	public FastqRecord(FastqRecord base, int headPos, int length)
 	{
 		if(headPos<0)
-			System.err.println("Attempting invalid trim on "+base.name+" with length "+base.sequence.length()+": Wanted "+headPos+" to "+(headPos+length));
+			throw new RuntimeException("Attempting invalid trim on "+base.name+" with length "+base.sequence.length()+": Wanted "+headPos+" to "+(headPos+length));
 		
 		int availableLength=base.getSequence().length();
 		if(headPos+length>availableLength)

@@ -10,12 +10,11 @@ import java.util.ListIterator;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 import org.usadellab.trimmomatic.fasta.FastaParser;
 import org.usadellab.trimmomatic.fasta.FastaRecord;
 import org.usadellab.trimmomatic.fastq.FastqRecord;
+import org.usadellab.trimmomatic.util.Logger;
 
 public class IlluminaClippingTrimmer implements Trimmer
 {
@@ -27,6 +26,8 @@ public class IlluminaClippingTrimmer implements Trimmer
 
 	private final static float LOG10_4 = 0.60206f;
 
+	private Logger logger;
+	
 	private int seedMaxMiss;
 	private int minPalindromeLikelihood;
 	// private int minPalindromeOverlap;
@@ -44,7 +45,7 @@ public class IlluminaClippingTrimmer implements Trimmer
 	private Set<IlluminaClippingSeq> commonSeqs;
 
 	
-	public static IlluminaClippingTrimmer makeIlluminaClippingTrimmer(String args) throws IOException
+	public static IlluminaClippingTrimmer makeIlluminaClippingTrimmer(Logger logger, String args) throws IOException
 	{
 		String arg[] = args.split(":");
 		
@@ -63,7 +64,7 @@ public class IlluminaClippingTrimmer implements Trimmer
 		if (arg.length > 5)
 			palindromeKeepBoth = Boolean.parseBoolean(arg[5]);
 
-		IlluminaClippingTrimmer trimmer=new IlluminaClippingTrimmer(seedMaxMiss, minPalindromeLikelihood, minSequenceLikelihood, minPrefix, palindromeKeepBoth);
+		IlluminaClippingTrimmer trimmer=new IlluminaClippingTrimmer(logger, seedMaxMiss, minPalindromeLikelihood, minSequenceLikelihood, minPrefix, palindromeKeepBoth);
 
 		try
 			{
@@ -71,15 +72,17 @@ public class IlluminaClippingTrimmer implements Trimmer
 			}
 		catch (IOException ex)
 			{
-			Logger.getLogger(IlluminaClippingTrimmer.class.getName()).log(Level.SEVERE, null, ex);
+			logger.handleException(ex);
 			}
 		
 		return trimmer;
 	}
 
 
-	public IlluminaClippingTrimmer(int seedMaxMiss, int minPalindromeLikelihood, int minSequenceLikelihood, int minPrefix, boolean palindromeKeepBoth)
+	public IlluminaClippingTrimmer(Logger logger, int seedMaxMiss, int minPalindromeLikelihood, int minSequenceLikelihood, int minPrefix, boolean palindromeKeepBoth)
 	{
+		this.logger=logger;
+		
 		this.seedMaxMiss = seedMaxMiss;
 		this.minPalindromeLikelihood = minPalindromeLikelihood;
 		this.minSequenceLikelihood = minSequenceLikelihood;
@@ -163,7 +166,7 @@ public class IlluminaClippingTrimmer implements Trimmer
 		reverseSeqs = mapClippingSet(reverseSeqMap);
 		commonSeqs = mapClippingSet(commonSeqMap);
 
-		System.err.println("ILLUMINACLIP: Using " + prefixPairs.size() + " prefix pairs, " + commonSeqs.size()
+		logger.infoln("ILLUMINACLIP: Using " + prefixPairs.size() + " prefix pairs, " + commonSeqs.size()
 				+ " forward/reverse sequences, " + forwardSeqs.size() + " forward only sequences, "
 				+ reverseSeqs.size() + " reverse only sequences");
 
@@ -200,7 +203,7 @@ public class IlluminaClippingTrimmer implements Trimmer
 			String seq = rec.getSequence();
 
 			if (uniqueSeq.contains(seq))
-				System.err.println("Skipping duplicate Clipping Sequence: '" + seq + "'");
+				logger.warnln("Skipping duplicate Clipping Sequence: '" + seq + "'");
 			else
 				{
 				uniqueSeq.add(seq);
@@ -323,7 +326,7 @@ public class IlluminaClippingTrimmer implements Trimmer
 
 		private IlluminaPrefixPair(String prefix1, String prefix2)
 		{
-			System.err.println("Using PrefixPair: '" + prefix1 + "' and '" + prefix2 + "'");
+			logger.infoln("Using PrefixPair: '" + prefix1 + "' and '" + prefix2 + "'");
 
 			int length1 = prefix1.length();
 			int length2 = prefix2.length();
@@ -366,6 +369,9 @@ public class IlluminaClippingTrimmer implements Trimmer
 			int testIndex = 0;
 			int refIndex = prefixLength;
 
+			if(pack1.length<=refIndex || pack2.length<=refIndex)
+				return null;
+			
 			int count = 0;
 
 			int seedSkip = prefixLength - 16;
@@ -375,8 +381,7 @@ public class IlluminaClippingTrimmer implements Trimmer
 				count = seedSkip;
 				}
 
-			long ref1 = pack1[refIndex];
-			long ref2 = pack2[refIndex];
+			long ref1, ref2;
 
 			int seqlen1 = rec1.getSequence().length() + prefixLength;
 			int seqlen2 = rec2.getSequence().length() + prefixLength;
@@ -621,7 +626,7 @@ public class IlluminaClippingTrimmer implements Trimmer
 
 		IlluminaShortClippingSeq(String seq)
 		{
-			System.err.println("Using Short Clipping Sequence: '" + seq + "'");
+			logger.infoln("Using Short Clipping Sequence: '" + seq + "'");
 
 			this.seq = seq;
 			this.mask = calcSingleMask(seq.length());
@@ -689,7 +694,7 @@ public class IlluminaClippingTrimmer implements Trimmer
 	{
 		IlluminaMediumClippingSeq(String seq)
 		{
-			System.err.println("Using Medium Clipping Sequence: '" + seq + "'");
+			logger.infoln("Using Medium Clipping Sequence: '" + seq + "'");
 
 			this.seq = seq;
 			pack = packSeqInternal(seq, false);
@@ -754,7 +759,7 @@ public class IlluminaClippingTrimmer implements Trimmer
 	{
 		IlluminaLongClippingSeq(String seq)
 		{
-			System.err.println("Using Long Clipping Sequence: '" + seq + "'");
+			logger.infoln("Using Long Clipping Sequence: '" + seq + "'");
 
 			this.seq = seq;
 

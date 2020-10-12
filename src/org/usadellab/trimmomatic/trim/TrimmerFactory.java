@@ -2,11 +2,16 @@ package org.usadellab.trimmomatic.trim;
 
 import java.io.IOException;
 
+import org.usadellab.trimmomatic.util.Logger;
+
 
 public class TrimmerFactory
 {
-	public TrimmerFactory()
+	Logger logger;
+	
+	public TrimmerFactory(Logger logger)
 	{
+		this.logger=logger;
 	}
 	
 	public Trimmer makeTrimmer(String desc) throws IOException
@@ -24,7 +29,7 @@ public class TrimmerFactory
 			}
 
 		if(trimmerName.equals("ILLUMINACLIP"))
-			return IlluminaClippingTrimmer.makeIlluminaClippingTrimmer(args);
+			return IlluminaClippingTrimmer.makeIlluminaClippingTrimmer(logger, args);
 		
 		if(trimmerName.equals("LEADING"))
 			return new LeadingTrimmer(args);
@@ -47,6 +52,9 @@ public class TrimmerFactory
 		if(trimmerName.equals("MINLEN"))
 			return new MinLenTrimmer(args);
 
+		if(trimmerName.equals("MAXLEN"))
+			return new MaxLenTrimmer(args);
+		
 		if(trimmerName.equals("AVGQUAL"))
 			return new AvgQualTrimmer(args);
 		
@@ -56,7 +64,6 @@ public class TrimmerFactory
 		if(trimmerName.equals("TOPHRED64"))
 			return new ToPhred64Trimmer(args);
 
-		
 		throw new RuntimeException("Unknown trimmer: "+trimmerName);
 	}
 }

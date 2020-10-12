@@ -1,5 +1,6 @@
 package org.usadellab.trimmomatic.threading;
 
+import java.util.Iterator;
 import java.util.List;
 
 import org.usadellab.trimmomatic.TrimStats;

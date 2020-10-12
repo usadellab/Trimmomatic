@@ -3,6 +3,8 @@ package org.usadellab.trimmomatic;
 import java.io.File;
 import java.io.IOException;
 import java.io.PrintStream;
+import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.Future;
@@ -12,6 +14,7 @@ import java.util.concurrent.TimeUnit;
 import org.usadellab.trimmomatic.fastq.FastqParser;
 import org.usadellab.trimmomatic.fastq.FastqRecord;
 import org.usadellab.trimmomatic.fastq.FastqSerializer;
+import org.usadellab.trimmomatic.fastq.PairingValidator;
 import org.usadellab.trimmomatic.threading.BlockOfRecords;
 import org.usadellab.trimmomatic.threading.BlockOfWork;
 import org.usadellab.trimmomatic.threading.ParserWorker;
@@ -20,6 +23,7 @@ import org.usadellab.trimmomatic.threading.TrimLogWorker;
 import org.usadellab.trimmomatic.threading.TrimStatsWorker;
 import org.usadellab.trimmomatic.trim.Trimmer;
 import org.usadellab.trimmomatic.trim.TrimmerFactory;
+import org.usadellab.trimmomatic.util.Logger;
 
 public class TrimmomaticPE extends Trimmomatic
 {
@@ -37,14 +41,16 @@ public class TrimmomaticPE extends Trimmomatic
 	 * MINLEN:<LENGTH> Drop the read if less than specified length
 	 */
 
-	public TrimmomaticPE()
-	{
+	private Logger logger;
 
+	public TrimmomaticPE(Logger logger)
+	{	
+		this.logger=logger;
 	}
 
 	public void processSingleThreaded(FastqParser parser1, FastqParser parser2, FastqSerializer serializer1P,
 			FastqSerializer serializer1U, FastqSerializer serializer2P, FastqSerializer serializer2U,
-			Trimmer trimmers[], PrintStream trimLogStream) throws IOException
+			Trimmer trimmers[], PrintStream trimLogStream, PairingValidator pairingValidator) throws IOException
 	{
 		TrimStats stats = new TrimStats();
 
@@ -56,6 +62,9 @@ public class TrimmomaticPE extends Trimmomatic
 			originalRecs[0] = recs[0] = parser1.next();
 			originalRecs[1] = recs[1] = parser2.next();
 
+			if(pairingValidator!=null)
+				pairingValidator.validatePair(recs[0], recs[1]);
+			
 			for (int i = 0; i < trimmers.length; i++)
 				{
 				try
@@ -64,7 +73,7 @@ public class TrimmomaticPE extends Trimmomatic
 					}
 				catch (RuntimeException e)
 					{
-					System.err.println("Exception processing reads: " + originalRecs[0].getName() + " and "
+					logger.errorln("Exception processing reads: " + originalRecs[0].getName() + " and "
 							+ originalRecs[1].getName());
 					e.printStackTrace();
 					throw e;
@@ -106,12 +115,12 @@ public class TrimmomaticPE extends Trimmomatic
 				}
 			}
 
-		System.err.println(stats.getStatsPE());
+		logger.infoln(stats.getStatsPE());
 	}
 
 	public void processMultiThreaded(FastqParser parser1, FastqParser parser2, FastqSerializer serializer1P,
 			FastqSerializer serializer1U, FastqSerializer serializer2P, FastqSerializer serializer2U,
-			Trimmer trimmers[], PrintStream trimLogStream, int threads) throws IOException
+			Trimmer trimmers[], PrintStream trimLogStream, PairingValidator pairingValidator, int threads) throws IOException
 	{
 		ArrayBlockingQueue<List<FastqRecord>> parser1Queue = new ArrayBlockingQueue<List<FastqRecord>>(threads);
 		ArrayBlockingQueue<List<FastqRecord>> parser2Queue = new ArrayBlockingQueue<List<FastqRecord>>(threads);
@@ -200,8 +209,11 @@ public class TrimmomaticPE extends Trimmomatic
 						done2 = true;
 					}
 
+				if(pairingValidator!=null)
+					pairingValidator.validatePairs(recs1, recs2);
+				
 				BlockOfRecords bor = new BlockOfRecords(recs1, recs2);
-				BlockOfWork work = new BlockOfWork(trimmers, bor, true, trimLogStream != null);
+				BlockOfWork work = new BlockOfWork(logger, trimmers, bor, true, trimLogStream != null);
 
 				while (taskQueue.remainingCapacity() < 1)
 					Thread.sleep(100);
@@ -237,7 +249,7 @@ public class TrimmomaticPE extends Trimmomatic
 				trimLogThread.join();
 
 			statsThread.join();
-			System.err.println(statsWorker.getStats().getStatsPE());
+			logger.infoln(statsWorker.getStats().getStatsPE());
 			}
 		catch (InterruptedException e)
 			{
@@ -246,7 +258,7 @@ public class TrimmomaticPE extends Trimmomatic
 	}
 
 	public void process(File input1, File input2, File output1P, File output1U, File output2P, File output2U,
-			Trimmer trimmers[], int phredOffset, File trimLog, int threads) throws IOException
+			Trimmer trimmers[], int phredOffset, File trimLog, boolean validatePairing, int threads) throws IOException
 	{
 		FastqParser parser1 = new FastqParser(phredOffset);
 		parser1.parse(input1);
@@ -261,13 +273,13 @@ public class TrimmomaticPE extends Trimmomatic
 			
 			if(phred1==phred2 && phred1!=0)
 				{
-				System.err.println("Quality encoding detected as phred"+phred1);
+				logger.infoln("Quality encoding detected as phred"+phred1);
 				parser1.setPhredOffset(phred1);
 				parser2.setPhredOffset(phred1);
 				}
 			else
 				{
-				System.err.println("Error: Unable to detect quality encoding");
+				logger.errorln("Error: Unable to detect quality encoding");
 				System.exit(1);
 				}
 			}
@@ -290,12 +302,17 @@ public class TrimmomaticPE extends Trimmomatic
 			// FileOutputStream(trimLog),1000000),false);
 			trimLogStream = new PrintStream(trimLog);
 
+		PairingValidator pairingValidator=null;
+		
+		if(validatePairing)
+			pairingValidator=new PairingValidator(logger);
+		
 		if (threads == 1)
 			processSingleThreaded(parser1, parser2, serializer1P, serializer1U, serializer2P, serializer2U, trimmers,
-					trimLogStream);
+					trimLogStream, pairingValidator);
 		else
 			processMultiThreaded(parser1, parser2, serializer1P, serializer1U, serializer2P, serializer2U, trimmers,
-					trimLogStream, threads);
+					trimLogStream, pairingValidator, threads);
 
 		serializer1P.close();
 		serializer1U.close();
@@ -392,62 +409,82 @@ public class TrimmomaticPE extends Trimmomatic
 		String templateOutput=null;
 		
 		boolean badOption = false;
-
+		boolean validatePairs = false;
+		boolean quiet=false;
+		
 		File trimLog = null;
 
-		while (argIndex < args.length && args[argIndex].startsWith("-"))
+		List<String> nonOptionArgs=new ArrayList<String>();
+		
+		while (argIndex < args.length)
 			{
 			String arg = args[argIndex++];
-			if (arg.equals("-phred33"))
-				phredOffset = 33;
-			else if (arg.equals("-phred64"))
-				phredOffset = 64;
-			else if (arg.equals("-threads"))
-				threads = Integer.parseInt(args[argIndex++]);
-			else if (arg.equals("-trimlog"))
-				{
-				if (argIndex < args.length)
-					trimLog = new File(args[argIndex++]);
+			
+			if(arg.startsWith("-"))
+				{			
+				if (arg.equals("-phred33"))
+					phredOffset = 33;
+				else if (arg.equals("-phred64"))
+					phredOffset = 64;
+				else if (arg.equals("-threads"))
+					threads = Integer.parseInt(args[argIndex++]);
+				else if (arg.equals("-trimlog"))
+					{
+					if (argIndex < args.length)
+						trimLog = new File(args[argIndex++]);
+					else
+						badOption = true;
+					}
+				else if (arg.equals("-basein"))
+					{
+					if (argIndex < args.length)
+						templateInput = args[argIndex++];  
+					else
+						badOption = true;
+					}
+				else if (arg.equals("-baseout"))
+					{
+					if (argIndex < args.length)
+						templateOutput = args[argIndex++];
+					else
+						badOption = true;
+					}
+				else if (arg.equals("-validatePairs"))
+					validatePairs=true;
+				else if (arg.equals("-quiet"))
+					quiet=true; 
 				else
+					{
+					System.err.println("Unknown option " + arg);
 					badOption = true;
-				}
-			else if (arg.equals("-basein"))
-				{
-				if (argIndex < args.length)
-					templateInput = args[argIndex++];
-				else
-					badOption = true;
-				}
-			else if (arg.equals("-baseout"))
-				{
-				if (argIndex < args.length)
-					templateOutput = args[argIndex++];
-				else
-					badOption = true;
+					}
 				}
 			else
-				{
-				System.err.println("Unknown option " + arg);
-				badOption = true;
-				}
+				nonOptionArgs.add(arg);
 			}
 
 		int additionalArgs=1+(templateInput==null?2:0)+(templateOutput==null?4:0);
 		
-		if (args.length - argIndex < additionalArgs || badOption)
+		if ((nonOptionArgs.size() < additionalArgs) || badOption)
 			return false;
-
-		System.err.print("TrimmomaticPE: Started with arguments:");
+		
+		Logger logger=new Logger(true,true,!quiet);
+		
+		
+		logger.infoln("TrimmomaticPE: Started with arguments:");
 		for (String arg : args)
-			System.err.print(" " + arg);
-		System.err.println();
+			logger.info(" " + arg);
+		logger.infoln();
 		
 		if(threads==0)
 			{
 			threads=calcAutoThreadCount();
 			if(threads>1)
-				System.err.println("Multiple cores found: Using "+threads+" threads");
+				logger.infoln("Multiple cores found: Using "+threads+" threads");
 			}
+
+		
+		Iterator<String> nonOptionArgsIter=nonOptionArgs.iterator();
 
 		File inputs[],outputs[];
 		
@@ -456,17 +493,17 @@ public class TrimmomaticPE extends Trimmomatic
 			inputs=calculateTemplatedInput(templateInput);
 			if(inputs==null)
 				{
-				System.err.println("Unable to determine input files from: "+templateInput);
+				logger.errorln("Unable to determine input files from: "+templateInput);
 				System.exit(1);
 				}
 			
-			System.out.println("Using templated Input files: "+inputs[0]+" "+inputs[1]);
+			logger.infoln("Using templated Input files: "+inputs[0]+" "+inputs[1]);
 			}
 		else
 			{
 			inputs=new File[2];
-			inputs[0]=new File(args[argIndex++]);
-			inputs[1]=new File(args[argIndex++]);
+			inputs[0]=new File(nonOptionArgsIter.next());
+			inputs[1]=new File(nonOptionArgsIter.next());
 			}
 		
 		if(templateOutput!=null)
@@ -478,27 +515,23 @@ public class TrimmomaticPE extends Trimmomatic
 				System.exit(1);
 				}
 			
-			System.out.println("Using templated Output files: "+outputs[0]+" "+outputs[1]+" "+outputs[2]+" "+outputs[3]);
+			logger.infoln("Using templated Output files: "+outputs[0]+" "+outputs[1]+" "+outputs[2]+" "+outputs[3]);
 			}
 		else
 			{
 			outputs=new File[4];
-			outputs[0]=new File(args[argIndex++]);
-			outputs[1]=new File(args[argIndex++]);
-			outputs[2]=new File(args[argIndex++]);
-			outputs[3]=new File(args[argIndex++]);
+			outputs[0]=new File(nonOptionArgsIter.next());
+			outputs[1]=new File(nonOptionArgsIter.next());
+			outputs[2]=new File(nonOptionArgsIter.next());
+			outputs[3]=new File(nonOptionArgsIter.next());
 			}
 
-		TrimmerFactory fac = new TrimmerFactory();
-		Trimmer trimmers[] = new Trimmer[args.length - argIndex];
+		Trimmer trimmers[]=createTrimmers(logger, nonOptionArgsIter);
+				
+		TrimmomaticPE tm = new TrimmomaticPE(logger);
+		tm.process(inputs[0], inputs[1], outputs[0], outputs[1], outputs[2], outputs[3], trimmers, phredOffset, trimLog, validatePairs, threads);
 
-		for (int i = 0; i < trimmers.length; i++)
-			trimmers[i] = fac.makeTrimmer(args[i + argIndex]);
-
-		TrimmomaticPE tm = new TrimmomaticPE();
-		tm.process(inputs[0], inputs[1], outputs[0], outputs[1], outputs[2], outputs[3], trimmers, phredOffset, trimLog, threads);
-
-		System.err.println("TrimmomaticPE: Completed successfully");
+		logger.infoln("TrimmomaticPE: Completed successfully");
 		return true;
 	}
 
@@ -507,7 +540,7 @@ public class TrimmomaticPE extends Trimmomatic
 		if (!run(args))
 			{
 			System.err
-					.println("Usage: TrimmomaticPE [-threads <threads>] [-phred33|-phred64] [-trimlog <trimLogFile>] [-basein <inputBase> | <inputFile1> <inputFile2>] [-baseout <outputBase> | <outputFile1P> <outputFile1U> <outputFile2P> <outputFile2U>] <trimmer1>...");
+					.println("Usage: TrimmomaticPE [-threads <threads>] [-phred33|-phred64] [-trimlog <trimLogFile>] [-quiet] [-validatePairs] [-basein <inputBase> | <inputFile1> <inputFile2>] [-baseout <outputBase> | <outputFile1P> <outputFile1U> <outputFile2P> <outputFile2U>] <trimmer1>...");
 			System.exit(1);
 			}
 	}

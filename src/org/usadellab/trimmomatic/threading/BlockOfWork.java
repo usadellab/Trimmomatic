@@ -7,16 +7,22 @@ import java.util.concurrent.Callable;
 import org.usadellab.trimmomatic.TrimStats;
 import org.usadellab.trimmomatic.fastq.FastqRecord;
 import org.usadellab.trimmomatic.trim.Trimmer;
+import org.usadellab.trimmomatic.util.Logger;
 
 public class BlockOfWork implements Callable<BlockOfRecords>
 {
+	private Logger logger;
+	
 	private Trimmer trimmers[];
 	private BlockOfRecords bor;
 	private boolean pe;
 	private boolean trimLog;
+
 	
-	public BlockOfWork(Trimmer trimmers[], BlockOfRecords bor, boolean pe, boolean trimLog)
+	public BlockOfWork(Logger logger, Trimmer trimmers[], BlockOfRecords bor, boolean pe, boolean trimLog)
 	{
+		this.logger=logger;
+		
 		this.trimmers = trimmers;
 		this.bor = bor;
 		
@@ -94,7 +100,7 @@ public class BlockOfWork implements Callable<BlockOfRecords>
 						}
 					catch (RuntimeException e)
 						{
-						System.err.println("Exception processing reads: "+originalRecs[0].getName()+" and "+originalRecs[1].getName());
+						logger.errorln("Exception processing reads: "+originalRecs[0].getName()+" and "+originalRecs[1].getName());
 						throw e;
 						}
 					}
@@ -167,7 +173,7 @@ public class BlockOfWork implements Callable<BlockOfRecords>
 						}
 					catch (RuntimeException e)
 						{
-						System.err.println("Exception processing read: "+originalRecs[0].getName());
+						logger.errorln("Exception processing read: "+originalRecs[0].getName());
 						e.printStackTrace();
 						throw e;
 						}
