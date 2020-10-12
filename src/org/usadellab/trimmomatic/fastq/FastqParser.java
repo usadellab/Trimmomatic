@@ -6,6 +6,7 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.util.ArrayDeque;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.zip.ZipInputStream;
 
@@ -15,7 +16,12 @@ import org.usadellab.trimmomatic.util.PositionTrackingInputStream;
 
 public class FastqParser {
 
+	private static final int PREREAD_COUNT=10000;
+
     private int phredOffset;
+    private ArrayDeque<FastqRecord> deque;
+    int qualHistogram[];
+    
     private PositionTrackingInputStream posTrackInputStream;
     private BufferedReader reader;
     private FastqRecord current;
@@ -25,10 +31,21 @@ public class FastqParser {
     
     public FastqParser(int phredOffset) {
         this.phredOffset = phredOffset;
+        deque=new ArrayDeque<FastqRecord>(PREREAD_COUNT);
+        
         this.atEOF=new AtomicBoolean();
     }
 
-    public void parseOne() throws IOException {
+    public void setPhredOffset(int phredOffset)
+    {
+    	this.phredOffset=phredOffset;
+    	
+    	if(current!=null)
+    		current.setPhredOffset(phredOffset);
+    }
+    
+    public void parseOne() throws IOException 
+    {
         current = null;
 
         String name;
@@ -73,6 +90,36 @@ public class FastqParser {
     	return (int)(((float) bytesRead / fileLength) * 100);    
     }
 
+    
+    private void accumulateHistogram(FastqRecord rec)
+    {
+    	int quals[]=rec.getQualityAsInteger(false);
+    	
+    	for(int i: quals)
+    		qualHistogram[i]++;
+    }
+    
+    public int determinePhredOffset()
+    {
+    	int phred33Total=0;
+    	int phred64Total=0;
+
+    	for(int i=33;i<=58;i++)
+    		phred33Total+=qualHistogram[i];
+    	
+    	for(int i=80;i<=104;i++)
+    		phred64Total+=qualHistogram[i];
+    	
+    	if(phred33Total==0 && phred64Total>0)
+    		return 64;
+
+    	if(phred64Total==0 && phred33Total>0)
+    		return 33;
+    	
+    	return 0;
+    }
+    
+    
     public void parse(File file) throws IOException {
         String name = file.getName();
         fileLength = file.length();
@@ -90,6 +137,22 @@ public class FastqParser {
         }
         
         reader=new BufferedReader(new InputStreamReader(contentInputStream), 32768);
+        
+        if(phredOffset==0)
+        	{
+        	deque.clear();
+        	qualHistogram=new int[256];
+        	
+        	for(int i=0;i<PREREAD_COUNT;i++)
+        		{
+        		parseOne();
+        		if(current!=null)
+        			{
+        			deque.add(current);
+        			accumulateHistogram(current);
+        			}
+        		}
+        	}
         parseOne();
     }
 
@@ -98,14 +161,26 @@ public class FastqParser {
     }
 
     public boolean hasNext() {
-        return current != null;
+        return (!deque.isEmpty()) || (current != null);
     }
 
     public FastqRecord next() throws IOException {
-        FastqRecord current = this.current;
-        parseOne();
+    	if(deque.isEmpty())
+    		{
+    		FastqRecord current = this.current;
+    		parseOne();
 
-        return current;
+    		return current;
+    		}
+    	else
+    		{
+    		FastqRecord rec=deque.poll();
+    		
+    		if(rec!=null)
+    			rec.setPhredOffset(phredOffset);
+    		
+    		return rec;
+    		}
     }
 
 }

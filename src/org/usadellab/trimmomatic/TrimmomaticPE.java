@@ -21,7 +21,7 @@ import org.usadellab.trimmomatic.threading.TrimStatsWorker;
 import org.usadellab.trimmomatic.trim.Trimmer;
 import org.usadellab.trimmomatic.trim.TrimmerFactory;
 
-public class TrimmomaticPE
+public class TrimmomaticPE extends Trimmomatic
 {
 
 	/**
@@ -253,6 +253,24 @@ public class TrimmomaticPE
 		FastqParser parser2 = new FastqParser(phredOffset);
 		parser2.parse(input2);
 
+		if(phredOffset==0)
+			{
+			int phred1=parser1.determinePhredOffset();
+			int phred2=parser2.determinePhredOffset();
+			
+			if(phred1==phred2 && phred1!=0)
+				{
+				System.err.println("Quality encoding detected as phred"+phred1);
+				parser1.setPhredOffset(phred1);
+				parser2.setPhredOffset(phred1);
+				}
+			else
+				{
+				System.err.println("Error: Unable to detect quality encoding");
+				System.exit(1);
+				}
+			}
+		
 		FastqSerializer serializer1P = new FastqSerializer();
 		serializer1P.open(output1P);
 
@@ -286,13 +304,92 @@ public class TrimmomaticPE
 		if (trimLogStream != null)
 			trimLogStream.close();
 	}
+	
+	private static int getFileExtensionIndex(String str)
+	{
+		String extensions[]={".fq",".fastq",".txt",".gz",".bz2",".zip"};
+	
+		String tmp=str;
+		boolean done=false;
+		
+		while(!done)
+			{
+			done=true;
+			for(String ext: extensions)
+				{		
+				if(tmp.endsWith(ext))
+					{
+					tmp=tmp.substring(0,tmp.length()-ext.length());
+					done=false;
+					}
+				}
+			}
+	
+		return tmp.length();
+	}
+
+	private static String replaceLast(String str, String out, String in)
+	{
+		int idx1=str.lastIndexOf(out);
+		if(idx1==-1)
+			return null;
+		
+		int idx2=idx1+out.length();
+		
+		return str.substring(0,idx1)+in+str.substring(idx2);
+	}
+	
+	
+	
+	private static File[] calculateTemplatedInput(String baseStr)
+	{
+		String translation[][]={{"_R1_","_R2_"},{"_f","_r"},{".f",".r"},{"_1","_2"},{".1",".2"}};
+	
+		File fileBase=new File(baseStr);
+		File baseDir=fileBase.getParentFile();
+		
+		String baseName=fileBase.getName();
+		int extSplit=getFileExtensionIndex(baseName);
+		
+		String core=baseName.substring(0,extSplit);
+		String exts=baseName.substring(extSplit);
+		
+		for(String pair[]: translation)
+			{
+			String tmp=replaceLast(core, pair[0], pair[1]);
+			if(tmp!=null)
+				return new File[] {fileBase, new File(baseDir, tmp+exts)};
+			}
+		
+		return null;
+	}
+
+	
+	private static File[] calculateTemplatedOutput(String baseStr)
+	{
+		File fileBase=new File(baseStr);
+		File baseDir=fileBase.getParentFile();
+		
+		String baseName=fileBase.getName();
+		int extSplit=getFileExtensionIndex(baseName);
+		
+		String core=baseName.substring(0,extSplit);
+		String exts=baseName.substring(extSplit);
+		
+		return new File[] {new File(baseDir,core+"_1P"+exts),new File(baseDir,core+"_1U"+exts),new File(baseDir,core+"_2P"+exts),new File(baseDir,core+"_2U"+exts)};		
+	}
+
+	
 
 	public static boolean run(String[] args) throws IOException
 	{
 		int argIndex = 0;
-		int phredOffset = 64;
-		int threads = 1;
+		int phredOffset = 0;
+		int threads = 0;
 
+		String templateInput=null;
+		String templateOutput=null;
+		
 		boolean badOption = false;
 
 		File trimLog = null;
@@ -313,6 +410,20 @@ public class TrimmomaticPE
 				else
 					badOption = true;
 				}
+			else if (arg.equals("-basein"))
+				{
+				if (argIndex < args.length)
+					templateInput = args[argIndex++];
+				else
+					badOption = true;
+				}
+			else if (arg.equals("-baseout"))
+				{
+				if (argIndex < args.length)
+					templateOutput = args[argIndex++];
+				else
+					badOption = true;
+				}
 			else
 				{
 				System.err.println("Unknown option " + arg);
@@ -320,22 +431,62 @@ public class TrimmomaticPE
 				}
 			}
 
-		if (args.length - argIndex < 7 || badOption)
+		int additionalArgs=1+(templateInput==null?2:0)+(templateOutput==null?4:0);
+		
+		if (args.length - argIndex < additionalArgs || badOption)
 			return false;
 
 		System.err.print("TrimmomaticPE: Started with arguments:");
 		for (String arg : args)
 			System.err.print(" " + arg);
 		System.err.println();
+		
+		if(threads==0)
+			{
+			threads=calcAutoThreadCount();
+			if(threads>1)
+				System.err.println("Multiple cores found: Using "+threads+" threads");
+			}
 
-		File input1 = new File(args[argIndex++]);
-		File input2 = new File(args[argIndex++]);
-
-		File output1P = new File(args[argIndex++]);
-		File output1U = new File(args[argIndex++]);
-
-		File output2P = new File(args[argIndex++]);
-		File output2U = new File(args[argIndex++]);
+		File inputs[],outputs[];
+		
+		if(templateInput!=null)
+			{
+			inputs=calculateTemplatedInput(templateInput);
+			if(inputs==null)
+				{
+				System.err.println("Unable to determine input files from: "+templateInput);
+				System.exit(1);
+				}
+			
+			System.out.println("Using templated Input files: "+inputs[0]+" "+inputs[1]);
+			}
+		else
+			{
+			inputs=new File[2];
+			inputs[0]=new File(args[argIndex++]);
+			inputs[1]=new File(args[argIndex++]);
+			}
+		
+		if(templateOutput!=null)
+			{
+			outputs=calculateTemplatedOutput(templateOutput);
+			if(outputs==null)
+				{
+				System.err.println("Unable to determine output files from: "+templateInput);
+				System.exit(1);
+				}
+			
+			System.out.println("Using templated Output files: "+outputs[0]+" "+outputs[1]+" "+outputs[2]+" "+outputs[3]);
+			}
+		else
+			{
+			outputs=new File[4];
+			outputs[0]=new File(args[argIndex++]);
+			outputs[1]=new File(args[argIndex++]);
+			outputs[2]=new File(args[argIndex++]);
+			outputs[3]=new File(args[argIndex++]);
+			}
 
 		TrimmerFactory fac = new TrimmerFactory();
 		Trimmer trimmers[] = new Trimmer[args.length - argIndex];
@@ -344,7 +495,7 @@ public class TrimmomaticPE
 			trimmers[i] = fac.makeTrimmer(args[i + argIndex]);
 
 		TrimmomaticPE tm = new TrimmomaticPE();
-		tm.process(input1, input2, output1P, output1U, output2P, output2U, trimmers, phredOffset, trimLog, threads);
+		tm.process(inputs[0], inputs[1], outputs[0], outputs[1], outputs[2], outputs[3], trimmers, phredOffset, trimLog, threads);
 
 		System.err.println("TrimmomaticPE: Completed successfully");
 		return true;
@@ -355,7 +506,7 @@ public class TrimmomaticPE
 		if (!run(args))
 			{
 			System.err
-					.println("Usage: TrimmomaticPE [-threads <threads>] [-phred33|-phred64] [-trimlog <trimLogFile>] <inputFile1> <inputFile2> <outputFile1P> <outputFile1U> <outputFile2P> <outputFile2U> <trimmer1>...");
+					.println("Usage: TrimmomaticPE [-threads <threads>] [-phred33|-phred64] [-trimlog <trimLogFile>] [-basein <inputBase> | <inputFile1> <inputFile2>] [-baseout <outputBase> | <outputFile1P> <outputFile1U> <outputFile2P> <outputFile2U>] <trimmer1>...");
 			System.exit(1);
 			}
 	}

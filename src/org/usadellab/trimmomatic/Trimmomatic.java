@@ -6,6 +6,18 @@ import java.util.Arrays;
 public class Trimmomatic
 {
 
+	private static final int MAX_AUTO_THREADS=16;
+
+	public static int calcAutoThreadCount()
+	{
+		int cpus=Runtime.getRuntime().availableProcessors();
+		
+		if(cpus>MAX_AUTO_THREADS)
+			return MAX_AUTO_THREADS;
+		
+		return cpus;
+	}
+
 	/**
 	 * @param args
 	 */
@@ -33,7 +45,7 @@ public class Trimmomatic
 		if(showUsage)
 			{
 			System.err.println("Usage: ");
-			System.err.println("       PE [-threads <threads>] [-phred33|-phred64] [-trimlog <trimLogFile>] <inputFile1> <inputFile2> <outputFile1P> <outputFile1U> <outputFile2P> <outputFile2U> <trimmer1>...");
+			System.err.println("       PE [-threads <threads>] [-phred33|-phred64] [-trimlog <trimLogFile>] [-basein <inputBase> | <inputFile1> <inputFile2>] [-baseout <outputBase> | <outputFile1P> <outputFile1U> <outputFile2P> <outputFile2U>] <trimmer1>...");
 			System.err.println("   or: ");
 			System.err.println("       SE [-threads <threads>] [-phred33|-phred64] [-trimlog <trimLogFile>] <inputFile> <outputFile> <trimmer1>...");
 			System.exit(1);

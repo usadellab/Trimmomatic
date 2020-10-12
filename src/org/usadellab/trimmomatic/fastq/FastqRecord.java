@@ -6,7 +6,7 @@ public class FastqRecord
 	private String sequence;
 	private String comment;
 	private String quality;
-        private String barcodeLabel = null; 
+    private String barcodeLabel = null; 
 	
 	private int phredOffset;
 	private int headPos;
@@ -103,6 +103,11 @@ public class FastqRecord
 	public int getPhredOffset()
 	{
 		return phredOffset;
+	}
+	
+	void setPhredOffset(int phredOffset)
+	{
+		this.phredOffset=phredOffset;
 	}
 	
 	public int getHeadPos()

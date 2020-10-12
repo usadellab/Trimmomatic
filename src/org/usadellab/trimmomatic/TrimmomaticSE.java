@@ -21,7 +21,7 @@ import org.usadellab.trimmomatic.threading.TrimStatsWorker;
 import org.usadellab.trimmomatic.trim.Trimmer;
 import org.usadellab.trimmomatic.trim.TrimmerFactory;
 
-public class TrimmomaticSE
+public class TrimmomaticSE extends Trimmomatic
 {
 
 	/**
@@ -191,6 +191,21 @@ public class TrimmomaticSE
 		FastqParser parser = new FastqParser(phredOffset);
 		parser.parse(input);
 
+		if(phredOffset==0)
+			{
+			int phred=parser.determinePhredOffset();
+			if(phred!=0)
+				{
+				System.err.println("Quality encoding detected as phred"+phred);
+				parser.setPhredOffset(phred);
+				}
+			else
+				{
+				System.err.println("Error: Unable to detect quality encoding");
+				System.exit(1);
+				}
+			}
+		
 		FastqSerializer serializer = new FastqSerializer();
 		serializer.open(output);
 
@@ -212,8 +227,8 @@ public class TrimmomaticSE
 	public static boolean run(String[] args) throws IOException
 	{
 		int argIndex = 0;
-		int phredOffset = 64;
-		int threads = 1;
+		int phredOffset = 0;
+		int threads = 0;
 
 		boolean badOption = false;
 
@@ -250,6 +265,13 @@ public class TrimmomaticSE
 			System.err.print(" " + arg);
 		System.err.println();
 
+		if(threads==0)
+			{
+			threads=calcAutoThreadCount();
+			System.err.println("Automatically using "+threads+" threads");
+			}
+		
+		
 		File input = new File(args[argIndex++]);
 		File output = new File(args[argIndex++]);
 
