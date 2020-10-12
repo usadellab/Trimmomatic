@@ -40,6 +40,9 @@ public class TrimmerFactory
 		if(trimmerName.equals("HEADCROP"))
 			return new HeadCropTrimmer(args);
 
+		if(trimmerName.equals("TAILCROP"))
+			return new TailCropTrimmer(args);
+		
 		if(trimmerName.equals("CROP"))
 			return new CropTrimmer(args);
 

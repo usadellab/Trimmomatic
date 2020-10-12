@@ -34,7 +34,9 @@ public class ConcatGZIPInputStream extends InputStream
 			}
 		
 		if(more)
+			{
 			gzIn=new GZIPHelperInputStream(source);
+			}
 		else
 			gzIn=null;
 	}
@@ -57,22 +59,7 @@ public class ConcatGZIPInputStream extends InputStream
 			if(res==-1)
 				nextGzipInputStream();
 			}
-	
-		/*
-		if(gzIn==null)
-			return -1;
-	
-		int res=gzIn.read();
-		if(res==-1)
-			{
-			nextGzipInputStream();
-			if(gzIn==null)
-				return -1;
-			else
-				res=gzIn.read();
-			}
-	*/
-		
+
 		return res;
 	}
 
@@ -87,22 +74,7 @@ public class ConcatGZIPInputStream extends InputStream
 			if(res==-1)
 				nextGzipInputStream();
 			}
-	
-	/*
-		if(gzIn==null)
-			return -1;
-	
-		int res=gzIn.read(b, off, len);
-		if(res==-1)
-			{
-			nextGzipInputStream();
-			if(gzIn==null)
-				return -1;
-			else
-				res=gzIn.read(b, off, len);
-			}
-		*/
-	
+		
 		return res;
 	}
 
@@ -117,21 +89,6 @@ public class ConcatGZIPInputStream extends InputStream
 			if(res==-1)
 				nextGzipInputStream();
 			}
-	
-	/*
-		if(gzIn==null)
-			return -1;
-	
-		int res=gzIn.read(b);
-		if(res==-1)
-			{
-			nextGzipInputStream();
-			if(gzIn==null)
-				return -1;
-			else
-				res=gzIn.read(b);
-			}	
-		*/
 
 		return res;	
 	}

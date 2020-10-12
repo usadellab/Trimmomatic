@@ -411,6 +411,7 @@ public class TrimmomaticPE extends Trimmomatic
 		boolean badOption = false;
 		boolean validatePairs = false;
 		boolean quiet=false;
+		boolean showVersion=false;
 		
 		File trimLog = null;
 
@@ -452,7 +453,9 @@ public class TrimmomaticPE extends Trimmomatic
 				else if (arg.equals("-validatePairs"))
 					validatePairs=true;
 				else if (arg.equals("-quiet"))
-					quiet=true; 
+					quiet=true;
+				else if (arg.equals("-version"))
+					showVersion=true; 
 				else
 					{
 					System.err.println("Unknown option " + arg);
@@ -463,10 +466,14 @@ public class TrimmomaticPE extends Trimmomatic
 				nonOptionArgs.add(arg);
 			}
 
+		if(showVersion)
+			Trimmomatic.showVersion();
+		
+		
 		int additionalArgs=1+(templateInput==null?2:0)+(templateOutput==null?4:0);
 		
 		if ((nonOptionArgs.size() < additionalArgs) || badOption)
-			return false;
+			return showVersion;
 		
 		Logger logger=new Logger(true,true,!quiet);
 		

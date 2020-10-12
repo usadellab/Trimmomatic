@@ -239,6 +239,7 @@ public class TrimmomaticSE extends Trimmomatic
 
 		File trimLog = null;
 		boolean quiet=false;
+		boolean showVersion=false;		
 
 		List<String> nonOptionArgs=new ArrayList<String>();
 		
@@ -263,7 +264,8 @@ public class TrimmomaticSE extends Trimmomatic
 					}
 				else if (arg.equals("-quiet"))
 					quiet=true;
-
+				else if (arg.equals("-version"))
+					showVersion=true; 
 				else
 					{
 					System.err.println("Unknown option " + arg);
@@ -274,8 +276,11 @@ public class TrimmomaticSE extends Trimmomatic
 				nonOptionArgs.add(arg);
 			}
 
+		if(showVersion)
+			Trimmomatic.showVersion();
+		
 		if ((nonOptionArgs.size() < 3) || badOption)
-			return false;
+			return showVersion;
 
 		Logger logger=new Logger(true,true,!quiet);
 		

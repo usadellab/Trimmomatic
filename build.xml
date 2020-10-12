@@ -1,5 +1,5 @@
 <project name="Trimmomatic" default="dist" basedir=".">
-	<property name="version" value="0.35"/>
+	<property name="version" value="0.36"/>
 	
 	<property name="src" location="src" />
 	<property name="lib" location="lib" />
@@ -44,6 +44,8 @@
 				<exclude name="**/*.java"/>
 			</fileset>
 		</copy>
+		
+		<echo file="${dist_build}/version.properties" append="false">version=${version}${line.separator}</echo>
 	</target>
 
 	<target name="dist" depends="compile">
