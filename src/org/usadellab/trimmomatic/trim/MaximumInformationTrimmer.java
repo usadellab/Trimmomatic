@@ -5,7 +5,8 @@ import org.usadellab.trimmomatic.fastq.FastqRecord;
 public class MaximumInformationTrimmer extends AbstractSingleRecordTrimmer
 {
 	public static final int LONGEST_READ = 1000;
-
+	public static final int MAXQUAL=60;
+	
 	private int parLength;
 	private float strictness;
 
@@ -60,9 +61,9 @@ public class MaximumInformationTrimmer extends AbstractSingleRecordTrimmer
 			lengthScoreTmp[i]=unique+coverage;
 			}
 		
-		qualProbTmp=new double[61];
+		qualProbTmp=new double[MAXQUAL+1];
 		
-		for(int i=0;i<61;i++)
+		for(int i=0;i<qualProbTmp.length;i++)
 			{
 			// Quality weighting is probability of correctness, depending on strictness 			
 			//qualProb[i]=Math.pow(1-Math.pow(0.1, (0.5+i)/10.0),strictness);
@@ -91,7 +92,13 @@ public class MaximumInformationTrimmer extends AbstractSingleRecordTrimmer
 		
 		for(int i=0;i<quals.length;i++)
 			{
-			accumQuality+=qualProb[quals[i]];
+			int q=quals[i];
+			if(q<0)
+				q=0;
+			else if(q>MAXQUAL)
+				q=MAXQUAL;
+			
+			accumQuality+=qualProb[q];
 			long ls=lengthScore[i];
 			long score=ls+accumQuality;
 			

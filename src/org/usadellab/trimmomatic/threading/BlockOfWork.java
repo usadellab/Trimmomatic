@@ -168,6 +168,7 @@ public class BlockOfWork implements Callable<BlockOfRecords>
 					catch (RuntimeException e)
 						{
 						System.err.println("Exception processing read: "+originalRecs[0].getName());
+						e.printStackTrace();
 						throw e;
 						}
 					}

@@ -352,6 +352,8 @@ public class IlluminaClippingTrimmer implements Trimmer
 			return prefix2;
 		}
 
+
+		
 		private Integer palindromeReadsCompare(FastqRecord rec1, FastqRecord rec2)
 		{
 			int seedMax = seedMaxMiss * 2;

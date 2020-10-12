@@ -66,6 +66,7 @@ public class TrimmomaticPE extends Trimmomatic
 					{
 					System.err.println("Exception processing reads: " + originalRecs[0].getName() + " and "
 							+ originalRecs[1].getName());
+					e.printStackTrace();
 					throw e;
 					}
 				}

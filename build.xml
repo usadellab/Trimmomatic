@@ -1,5 +1,5 @@
 <project name="Trimmomatic" default="dist" basedir=".">
-	<property name="version" value="0.32"/>
+	<property name="version" value="0.33"/>
 	
 	<property name="src" location="src" />
 	<property name="lib" location="lib" />
