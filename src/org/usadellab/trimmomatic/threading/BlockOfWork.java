@@ -87,7 +87,17 @@ public class BlockOfWork implements Callable<BlockOfRecords>
 				FastqRecord recs[]=originalRecs;
 				
 				for(int j=0;j<trimmers.length;j++)
-					recs=trimmers[j].processRecords(recs);
+					{
+					try
+						{
+						recs=trimmers[j].processRecords(recs);
+						}
+					catch (RuntimeException e)
+						{
+						System.err.println("Exception processing reads: "+originalRecs[0].getName()+" and "+originalRecs[1].getName());
+						throw e;
+						}
+					}
 				
 				if(recs[0]!=null && recs[1]!=null)
 					{
@@ -150,7 +160,17 @@ public class BlockOfWork implements Callable<BlockOfRecords>
 				FastqRecord recs[]=originalRecs;
 				
 				for(int j=0;j<trimmers.length;j++)
-					recs=trimmers[j].processRecords(recs);
+					{
+					try
+						{
+						recs=trimmers[j].processRecords(recs);
+						}
+					catch (RuntimeException e)
+						{
+						System.err.println("Exception processing reads: "+originalRecs[0].getName());
+						throw e;
+						}
+					}
 				
 				if(recs[0]!=null)
 					trimmedRecs.add(recs[0]);

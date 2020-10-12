@@ -4,28 +4,29 @@ import java.io.BufferedInputStream;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.zip.GZIPInputStream;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.zip.ZipInputStream;
+
 import org.itadaki.bzip2.BZip2InputStream;
+import org.usadellab.trimmomatic.util.ConcatGZIPInputStream;
+import org.usadellab.trimmomatic.util.PositionTrackingInputStream;
 
 public class FastqParser {
 
     private int phredOffset;
+    private PositionTrackingInputStream posTrackInputStream;
     private BufferedReader reader;
     private FastqRecord current;
-    private AtomicInteger progress;
     private long fileLength;
-    private long bytesRead;
-    private EOL_TYPE eoltype;
 
+    private AtomicBoolean atEOF;
+    
     public FastqParser(int phredOffset) {
         this.phredOffset = phredOffset;
-        this.progress = new AtomicInteger(0);
-        this.bytesRead = 0;
+        this.atEOF=new AtomicBoolean();
     }
 
     public void parseOne() throws IOException {
@@ -40,11 +41,10 @@ public class FastqParser {
 
         line = reader.readLine();
         if (line == null) {
-            progress.set(100);
+        	atEOF.set(true);
             return;
         }
-        bytesRead += line.length() + eoltype.getByteSize(); 
-
+        
         if (line.startsWith("@")) {
             name = line.substring(1);
         } else {
@@ -52,43 +52,46 @@ public class FastqParser {
         }
 
         sequence = reader.readLine();
-        bytesRead += line.length() + eoltype.getByteSize(); 
 
         line = reader.readLine();
-        bytesRead += line.length() + eoltype.getByteSize(); 
+
         if (line.startsWith("+")) {
             comment = line.substring(1);
         } else {
             throw new RuntimeException("Invalid FASTQ comment line: " + line);
         }
 
-        quality = reader.readLine();
-        bytesRead += line.length() + eoltype.getByteSize(); 
-
+        quality = reader.readLine();        
         current = new FastqRecord(name, sequence, comment, quality, phredOffset);
-        progress.set((int) (((float) bytesRead / fileLength) * 100));
     }
 
     public int getProgress() {
-        return this.progress.get();
+    	if(atEOF.get())
+    		return 100;
+    	
+    	long bytesRead=posTrackInputStream.getPosition();
+    	
+    	return (int)(((float) bytesRead / fileLength) * 100);    
     }
 
     public void parse(File file) throws IOException {
         String name = file.getName();
         fileLength = file.length();
-        eoltype = guessEOLType(file);
 
+        posTrackInputStream=new PositionTrackingInputStream(new FileInputStream(file));
+        BufferedInputStream bufStream=new BufferedInputStream(posTrackInputStream, 1000000);
 
+        InputStream contentInputStream=bufStream;
+        
         if (name.toLowerCase().endsWith(".gz")) {
-            reader = new BufferedReader(new InputStreamReader(new GZIPInputStream(new BufferedInputStream(new FileInputStream(file), 1000000))));
+            contentInputStream=new ConcatGZIPInputStream(bufStream);
         } else if (name.toLowerCase().endsWith(".bz2")) {
-            reader = new BufferedReader(new InputStreamReader(new BZip2InputStream(new BufferedInputStream(new FileInputStream(file), 1000000), false)));
+        	contentInputStream=new BZip2InputStream(bufStream, false);
         } else if (name.toLowerCase().endsWith(".zip")) {
-            reader = new BufferedReader(new InputStreamReader(new ZipInputStream(new BufferedInputStream(new FileInputStream(file), 1000000))));
-        } else {
-            reader = new BufferedReader(new InputStreamReader(new BufferedInputStream(new FileInputStream(file), 1000000)));
+        	contentInputStream=new ZipInputStream(bufStream);
         }
-
+        
+        reader=new BufferedReader(new InputStreamReader(contentInputStream));
         parseOne();
     }
 
@@ -107,42 +110,4 @@ public class FastqParser {
         return current;
     }
 
-    public static enum EOL_TYPE {
-
-        WINDOWS(2),
-        UNIX(1),
-        MACINTOSH(1),
-        UNKNOWN(0);
-        private int byteSize;
-
-        private EOL_TYPE(int size) {
-            this.byteSize = size;
-        }
-
-        public int getByteSize() {
-            return this.byteSize;
-        }
-    }
-
-    public static EOL_TYPE guessEOLType(File f) throws FileNotFoundException, IOException {
-        InputStreamReader isr = new InputStreamReader(new FileInputStream(f));
-        char symbol;
-        while (isr.ready()) {
-            symbol = (char) isr.read();
-            if (symbol == '\n') {
-                isr.close();
-                return EOL_TYPE.UNIX;
-            }
-            if (symbol == '\r') {
-                if (isr.read() == '\n') {
-                    isr.close();
-                    return EOL_TYPE.WINDOWS;
-                } else {
-                    isr.close();
-                    return EOL_TYPE.MACINTOSH;
-                }
-            }
-        }
-        return EOL_TYPE.UNKNOWN;
-    }
 }

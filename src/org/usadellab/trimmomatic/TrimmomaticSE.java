@@ -55,7 +55,17 @@ public class TrimmomaticSE
 			originalRecs[0] = recs[0] = parser.next();
 
 			for (int i = 0; i < trimmers.length; i++)
-				recs = trimmers[i].processRecords(recs);
+				{
+				try
+					{
+					recs=trimmers[i].processRecords(recs);
+					}
+				catch (RuntimeException e)
+					{
+					System.err.println("Exception processing read: "+originalRecs[0].getName());
+					throw e;
+					}
+				}
 
 			if (recs[0] != null)
 				{
@@ -87,7 +97,7 @@ public class TrimmomaticSE
 				}
 			}
 		
-		System.out.println(stats.getStatsSE());
+		System.err.println(stats.getStatsSE());
 	}
 
 	
@@ -166,7 +176,7 @@ public class TrimmomaticSE
 				trimLogThread.join();
 			
 			statsThread.join();
-			System.out.println(statsWorker.getStats().getStatsSE());		
+			System.err.println(statsWorker.getStats().getStatsSE());		
 			}
 		catch(InterruptedException e)
 			{
@@ -232,22 +242,22 @@ public class TrimmomaticSE
 				}
 			else
 				{
-				System.out.println("Unknown option " + arg);
+				System.err.println("Unknown option " + arg);
 				badOption = true;
 				}
 			}
 
 		if (args.length - argIndex < 3 || badOption)
 			{
-			System.out
+			System.err
 					.println("Usage: TrimmomaticSE [-threads <threads>] [-phred33|-phred64] [-trimlog <trimLogFile>] <inputFile> <outputFile> <trimmer1>...");
 			System.exit(1);
 			}
 
-		System.out.print("TrimmomaticSE: Started with arguments:");
+		System.err.print("TrimmomaticSE: Started with arguments:");
 		for(String arg: args)
-			System.out.print(" "+arg);
-		System.out.println();
+			System.err.print(" "+arg);
+		System.err.println();
 		
 		File input = new File(args[argIndex++]);
 		File output = new File(args[argIndex++]);
@@ -261,7 +271,7 @@ public class TrimmomaticSE
 		TrimmomaticSE tm = new TrimmomaticSE();
 		tm.process(input, output, trimmers, phredOffset, trimLog, threads);
 		
-		System.out.println("TrimmomaticSE: Completed successfully");
+		System.err.println("TrimmomaticSE: Completed successfully");
 	}
 
 }

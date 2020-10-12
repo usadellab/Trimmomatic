@@ -1,7 +1,9 @@
 package org.usadellab.trimmomatic;
 
+import java.io.BufferedOutputStream;
 import java.io.BufferedWriter;
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.util.List;
@@ -59,7 +61,15 @@ public class TrimmomaticPE
 		
 			for(int i=0;i<trimmers.length;i++)
 				{
-				recs=trimmers[i].processRecords(recs);
+				try
+					{
+					recs=trimmers[i].processRecords(recs);
+					}
+				catch (RuntimeException e)
+					{
+					System.err.println("Exception processing reads: "+originalRecs[0].getName()+" and "+originalRecs[1].getName());
+					throw e;
+					}
 				}
 		
 			if(recs[0]!=null && recs[1]!=null)
@@ -96,7 +106,7 @@ public class TrimmomaticPE
 				}
 		}
 		
-		System.out.println(stats.getStatsPE());
+		System.err.println(stats.getStatsPE());
 	}
 	
 	
@@ -222,7 +232,7 @@ public class TrimmomaticPE
 				trimLogThread.join();
 			
 			statsThread.join();
-			System.out.println(statsWorker.getStats().getStatsPE());		
+			System.err.println(statsWorker.getStats().getStatsPE());		
 			}
 		catch(InterruptedException e)
 			{
@@ -257,6 +267,7 @@ public class TrimmomaticPE
 		
 		PrintStream trimLogStream=null;
 		if(trimLog!=null)
+			//trimLogStream=new PrintStream(new BufferedOutputStream(new FileOutputStream(trimLog),1000000),false);
 			trimLogStream=new PrintStream(trimLog);
 		
 		if(threads==1)
@@ -303,21 +314,21 @@ public class TrimmomaticPE
 				}
 			else 
 				{
-				System.out.println("Unknown option "+arg);
+				System.err.println("Unknown option "+arg);
 				badOption=true;
 				}
 			}
 	
 		if(args.length-argIndex<7 || badOption)
 			{
-			System.out.println("Usage: TrimmomaticPE [-threads <threads>] [-phred33|-phred64] [-trimlog <trimLogFile>] <inputFile1> <inputFile2> <outputFile1P> <outputFile1U> <outputFile2P> <outputFile2U> <trimmer1>...");
+			System.err.println("Usage: TrimmomaticPE [-threads <threads>] [-phred33|-phred64] [-trimlog <trimLogFile>] <inputFile1> <inputFile2> <outputFile1P> <outputFile1U> <outputFile2P> <outputFile2U> <trimmer1>...");
 			System.exit(1);
 			}
 		
-		System.out.print("TrimmomaticPE: Started with arguments:");
+		System.err.print("TrimmomaticPE: Started with arguments:");
 		for(String arg: args)
-			System.out.print(" "+arg);
-		System.out.println();
+			System.err.print(" "+arg);
+		System.err.println();
 				
 		File input1=new File(args[argIndex++]);
 		File input2=new File(args[argIndex++]);
@@ -337,7 +348,7 @@ public class TrimmomaticPE
 		TrimmomaticPE tm=new TrimmomaticPE();
 		tm.process(input1,input2,output1P,output1U,output2P,output2U,trimmers,phredOffset,trimLog, threads);
 		
-		System.out.println("TrimmomaticPE: Completed successfully");
+		System.err.println("TrimmomaticPE: Completed successfully");
 	}
 
 }

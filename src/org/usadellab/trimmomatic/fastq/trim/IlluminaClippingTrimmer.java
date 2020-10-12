@@ -79,7 +79,6 @@ public class IlluminaClippingTrimmer implements Trimmer
 			FastaRecord rec = parser.next();
 
 			String name = rec.getName();
-//			System.out.println("Loaded "+name+" with "+rec.getSequence());
 
 			if (name.endsWith(SUFFIX_F))
 				{
@@ -125,7 +124,7 @@ public class IlluminaClippingTrimmer implements Trimmer
 		reverseSeqs = mapClippingSet(reverseSeqMap);
 		commonSeqs = mapClippingSet(commonSeqMap);
 		
-		System.out.println("ILLUMINACLIP: Using "+prefixPairs.size()+" prefix pairs, "+
+		System.err.println("ILLUMINACLIP: Using "+prefixPairs.size()+" prefix pairs, "+
 				commonSeqs.size()+" forward/reverse sequences, "+
 				forwardSeqs.size()+" forward only sequences, "+
 				reverseSeqs.size()+" reverse only sequences");
@@ -245,8 +244,17 @@ public class IlluminaClippingTrimmer implements Trimmer
 		String clipSequence = clipSeq.getSeq();
 
 		Set<Integer> offsetSet = new TreeSet<Integer>();
+/*	
+		String seq=rec.getSequence();
 
-		long packRec[] = packSeq(rec.getSequence(), false);
+		if(seq.length()<15)
+			{
+			System.err.println("Warning: Sequence '"+seq+"' is too short for adapter clipping - skipping");
+			return null;
+			}
+	*/
+		
+		long packRec[] = packSeqExternal(rec.getSequence());
 		long packClip[] = clipSeq.getPack();
 		long mask= clipSeq.getMask();
 
@@ -255,6 +263,8 @@ public class IlluminaClippingTrimmer implements Trimmer
 				{
 				int diff = Long.bitCount((packRec[i] ^ packClip[j])&mask);
 
+				//System.out.println("Diff is "+diff);
+				
 				if (diff <= seedMax)
 					{
 					int offset = i - j * INTERLEAVE;
@@ -317,8 +327,8 @@ public class IlluminaClippingTrimmer implements Trimmer
 	{
 		int seedMax = seedMaxMiss * 2;
 
-		long pack1[] = packSeq(pair.getPrefix1() + rec1.getSequence(), false);
-		long pack2[] = packSeq(pair.getPrefix2() + rec2.getSequence(), true);
+		long pack1[] = packSeqInternal(pair.getPrefix1() + rec1.getSequence(), false);
+		long pack2[] = packSeqInternal(pair.getPrefix2() + rec2.getSequence(), true);
 
 		int prefixLength = pair.getPrefix1().length();
 
@@ -368,7 +378,9 @@ public class IlluminaClippingTrimmer implements Trimmer
 						skip1, skip2);
 
 				if (palindromeLikelihood >= minPalindromeLikelihood)
+					{				
 					return totalOverlap - prefixLength * 2;
+					}
 				}
 
 			count++;
@@ -502,8 +514,8 @@ public class IlluminaClippingTrimmer implements Trimmer
 			if (val > max)
 				max = val;
 			}
-
-		return total;
+		
+		return max;
 	}
 
 	private float calculateTotal(float vals[])
@@ -523,7 +535,7 @@ public class IlluminaClippingTrimmer implements Trimmer
 
 		private IlluminaPrefixPair(String prefix1, String prefix2)
 		{
-			System.out.println("Using PrefixPair: '"+prefix1+"' and '"+prefix2+"'");
+			System.err.println("Using PrefixPair: '"+prefix1+"' and '"+prefix2+"'");
 		
 			int length1 = prefix1.length();
 			int length2 = prefix2.length();
@@ -561,18 +573,19 @@ public class IlluminaClippingTrimmer implements Trimmer
 
 		private IlluminaClippingSeq(String seq)
 		{
-			System.out.println("Using Clipping Sequence: '"+seq+"'");
+			System.err.println("Using Clipping Sequence: '"+seq+"'");
 		
 			this.seq = seq;
 			this.mask = 0xFFFFFFFFFFFFFFFFL; 
 			
 			if(seq.length()<16)
 				{
-				mask<<=16-seq.length()*4;
-				seq=(seq+"NNNNNNNNNNNNNNNN").substring(0,16);
+				mask<<=(16-seq.length())*4;
+//				seq=(seq+"NNNNNNNNNNNNNNNN").substring(0,16);
 				}
 			
-			long fullPack[] = packSeq(seq, false);
+			//System.out.println("Sequence is "+seq);
+			long fullPack[] = packSeqExternal(seq);
 
 			pack = new long[(fullPack.length + INTERLEAVE - 1) / INTERLEAVE];
 
@@ -601,7 +614,47 @@ public class IlluminaClippingTrimmer implements Trimmer
 	private final static int BASE_G = 0x8;
 	private final static int BASE_T = 0x2;
 
-	public static long[] packSeq(String seq, boolean reverse)
+	public static long[] packSeqExternal(String seq)
+	{
+		long out[] = null;
+
+		out = new long[seq.length()];
+
+		long pack = 0;
+
+		int offset=0;
+		
+		for(int i=0;i<15;i++)
+			{
+			int tmp = 0;
+			
+			if(offset<seq.length())
+				tmp=packCh(seq.charAt(offset), false);
+
+			pack = (pack << 4) | tmp;
+			offset++;
+			}
+			
+		for (int i = 0; i < seq.length(); i++)
+			{
+			int tmp = 0;
+				
+			if(offset<seq.length())
+				tmp=packCh(seq.charAt(offset), false);
+
+			pack = (pack << 4) | tmp;
+			out[i] = pack;
+			
+			offset++;
+			}
+	
+		//System.out.println("Last pack is "+out[seq.length()-1]);
+		
+		return out;
+	}
+	
+	
+	public static long[] packSeqInternal(String seq, boolean reverse)
 	{
 		long out[] = null;
 

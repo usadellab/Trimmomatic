@@ -127,28 +127,28 @@ public class Pairomatic
 			Character delimiter) throws IOException
 	{
 		Set<String> names1 = getFastqNames(input1, delimiter);
-		System.out.println("First input file contains " + names1.size() + " records");
+		System.err.println("First input file contains " + names1.size() + " records");
 
 		Set<String> names2 = getFastqNames(input2, delimiter);
-		System.out.println("Second input file contains " + names2.size() + " records");
+		System.err.println("Second input file contains " + names2.size() + " records");
 
 		names1.retainAll(names2);
-		System.out.println("Files shared " + names1.size() + " records");
+		System.err.println("Files shared " + names1.size() + " records");
 		
 		names2.retainAll(names1);
 		if(!equalOrdering(names1,names2))
 			{
-			System.out.println("Error: Common records are not in identical order, cowardly refusing to do anything");
+			System.err.println("Error: Common records are not in identical order, cowardly refusing to do anything");
 			return;
 			}
 		
-		System.out.println("Splitting first file");
+		System.err.println("Splitting first file");
 		splitFastq(input1, output1P, output1U, names1, delimiter);
 		
-		System.out.println("Splitting second file");
+		System.err.println("Splitting second file");
 		splitFastq(input2, output2P, output2U, names1, delimiter);
 		
-		System.out.println("All done");
+		System.err.println("All done");
 	}
 
 	public static void main(String[] args) throws IOException
@@ -166,20 +166,20 @@ public class Pairomatic
 				String delimStr=args[argIndex++];
 				
 				if(delimStr.length()!=1)
-					System.out.println("Delimiter must be exactly one character, got '"+delimStr+"'");
+					System.err.println("Delimiter must be exactly one character, got '"+delimStr+"'");
 				else
 					delim=delimStr.charAt(0);
 				}
 			else
 				{
-				System.out.println("Unknown option " + arg);
+				System.err.println("Unknown option " + arg);
 				badOption = true;
 				}
 			}
 
 		if (args.length - argIndex < 6 || badOption)
 			{
-			System.out
+			System.err
 					.println("Usage: Pairomatic [-delim delimChar] <inputFile1> <inputFile2> <outputFile1P> <outputFile1U> <outputFile2P> <outputFile2U>");
 			System.exit(1);
 			}		

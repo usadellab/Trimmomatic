@@ -27,13 +27,21 @@ public class FastqRecord
 
 	public FastqRecord(FastqRecord base, int headPos, int length)
 	{
+		if(headPos<0)
+			System.err.println("Attempting invalid trim on "+base.name+" with length "+base.sequence.length()+": Wanted "+headPos+" to "+(headPos+length));
+		
+		int availableLength=base.getSequence().length();
+		if(headPos+length>availableLength)
+			length=availableLength-headPos;
+	
 		this.sequence=base.sequence.substring(headPos,headPos+length);
 		this.quality=base.quality.substring(headPos,headPos+length);		
 		this.name=base.name;
 		this.comment=base.comment;
 		this.phredOffset=base.phredOffset;			
 		this.headPos=base.headPos+headPos;
-                this.barcodeLabel = base.barcodeLabel;
+
+		this.barcodeLabel = base.barcodeLabel;
 	}
 
 	public FastqRecord(FastqRecord base, String sequence, String quality, int phredOffset)
@@ -44,7 +52,8 @@ public class FastqRecord
 		this.comment=base.comment;
 		this.headPos=base.headPos;
 		this.phredOffset=phredOffset;
-                this.barcodeLabel = base.barcodeLabel;
+
+		this.barcodeLabel = base.barcodeLabel;
 	}
 
 	public String getName()

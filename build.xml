@@ -1,5 +1,5 @@
 <project name="Trimmomatic" default="dist" basedir=".">
-	<property name="version" value="0.22"/>
+	<property name="version" value="0.25"/>
 	
 	<property name="src" location="src" />
 	<property name="lib" location="lib" />
@@ -29,7 +29,7 @@
 	</target>
 
 	<target name="compile" depends="import">
-		<javac srcdir="${src}" destdir="${dist_build}" debug="true" target="1.5">
+		<javac srcdir="${src}" destdir="${dist_build}" debug="true" source="1.5" target="1.5" includeantruntime="false">
 			<classpath>
 				<fileset dir="${dist_lib}">
 					<include name="*.jar" />
@@ -69,7 +69,7 @@
 		</zip>
 		
 		<zip destfile="${dist}/Trimmomatic-Src-${version}.zip">
-		    <zipfileset dir="." excludes=".*,bin/**/*,build/**/*,dist/**/*,data/**/*,test/**/*" prefix="trimmomatic-${version}/"/>
+		    <zipfileset dir="." includes="src/**/*,adapters/**/*,distSrc/**/*,lib/**/*,build.xml,versionHistory.txt" prefix="trimmomatic-${version}/"/>
 		</zip>
 
 	</target>
