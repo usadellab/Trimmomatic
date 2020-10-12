@@ -1,0 +1,81 @@
+<project name="Trimmomatic" default="dist" basedir=".">
+	<property name="version" value="0.22"/>
+	
+	<property name="src" location="src" />
+	<property name="lib" location="lib" />
+
+	<property name="distsrc" location="distSrc" />
+	
+	<property name="dist" location="dist" />
+	<property name="dist_build" location="dist/build" />
+	<property name="dist_lib" location="dist/lib" />
+	<property name="dist_jar" location="dist/jar" />
+	<property name="dist_unpack" location="dist/unpack" />
+
+	<target name="init">
+		<mkdir dir="${dist}" />
+		<mkdir dir="${dist_build}" />
+		<mkdir dir="${dist_lib}"/>
+		<mkdir dir="${dist_jar}" />
+		<mkdir dir="${dist_unpack}" />
+	</target>
+
+	<target name="import" depends="init">
+		<copy todir="${dist_lib}">
+			<fileset dir="${lib}">
+				<include name="*.jar"/>
+			</fileset>
+		</copy>
+	</target>
+
+	<target name="compile" depends="import">
+		<javac srcdir="${src}" destdir="${dist_build}" debug="true" target="1.5">
+			<classpath>
+				<fileset dir="${dist_lib}">
+					<include name="*.jar" />
+				</fileset>
+			</classpath>
+		</javac>
+		
+		<copy todir="${dist_build}">
+			<fileset dir="${src}">
+				<exclude name="**/*.java"/>
+			</fileset>
+		</copy>
+	</target>
+
+	<target name="dist" depends="compile">
+		<unjar dest="${dist_unpack}">
+		    <fileset dir="${dist_lib}">
+	            <include name="**/*.jar"/>
+            </fileset>
+        </unjar>
+        
+        <delete dir="${dist_unpack}/META-INF"/>
+        <delete dir="${dist_unpack}/demo"/>
+        <move file="${dist_unpack}/AUTHORS" tofile="${dist_unpack}/AUTHORS.jbzip2"/>
+		<move file="${dist_unpack}/LICENCE" tofile="${dist_unpack}/LICENCE.jbzip2"/>
+	
+		<copy todir="${dist_unpack}">
+    		<fileset dir="${dist_build}">
+    		</fileset>
+		</copy>
+	
+		<jar jarfile="${dist_jar}/trimmomatic-${version}.jar" basedir="${dist_unpack}" />
+		
+		<zip destfile="${dist}/Trimmomatic-${version}.zip">
+			<zipfileset prefix="Trimmomatic-${version}" dir="${distsrc}"/>
+	    	<zipfileset prefix="Trimmomatic-${version}" dir="${dist_jar}" includes="trimmomatic-${version}.jar"/>
+		</zip>
+		
+		<zip destfile="${dist}/Trimmomatic-Src-${version}.zip">
+		    <zipfileset dir="." excludes=".*,bin/**/*,build/**/*,dist/**/*,data/**/*,test/**/*" prefix="trimmomatic-${version}/"/>
+		</zip>
+
+	</target>
+
+	<target name="clean">
+		<delete dir="${dist}" />
+	</target>
+	
+</project>

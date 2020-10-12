@@ -1,0 +1,9 @@
+Version 0.1: Initial Release
+
+Version 0.11: Fix SE parameter passing
+
+Version 0.14: Implement support for PHRED33 quality score encoding (-phred33 or -phred64)
+
+Version 0.15: Add support for logging the trimming (-trimlog <logfile>)
+
+Version 0.17: Add support for HEADCROP task (HEADCROP:<BasesToRemove>) 
