@@ -12,14 +12,14 @@ import java.util.concurrent.TimeUnit;
 import org.usadellab.trimmomatic.fastq.FastqParser;
 import org.usadellab.trimmomatic.fastq.FastqRecord;
 import org.usadellab.trimmomatic.fastq.FastqSerializer;
-import org.usadellab.trimmomatic.fastq.trim.Trimmer;
-import org.usadellab.trimmomatic.fastq.trim.TrimmerFactory;
 import org.usadellab.trimmomatic.threading.BlockOfRecords;
 import org.usadellab.trimmomatic.threading.BlockOfWork;
 import org.usadellab.trimmomatic.threading.ParserWorker;
 import org.usadellab.trimmomatic.threading.SerializerWorker;
 import org.usadellab.trimmomatic.threading.TrimLogWorker;
 import org.usadellab.trimmomatic.threading.TrimStatsWorker;
+import org.usadellab.trimmomatic.trim.Trimmer;
+import org.usadellab.trimmomatic.trim.TrimmerFactory;
 
 public class TrimmomaticSE
 {

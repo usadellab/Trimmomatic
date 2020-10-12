@@ -1,4 +1,4 @@
-package org.usadellab.trimmomatic.fastq.trim;
+package org.usadellab.trimmomatic.trim;
 
 import org.usadellab.trimmomatic.fastq.FastqRecord;
 
@@ -22,6 +22,9 @@ public class SlidingWindowTrimmer extends AbstractSingleRecordTrimmer
         totalRequiredQuality=requiredQuality*windowLength; // Convert to total
     }
 
+    /*
+     * @see org.usadellab.trimmomatic.trim.AbstractSingleRecordTrimmer#processRecord(org.usadellab.trimmomatic.fastq.FastqRecord)
+     */
 	@Override
 	public FastqRecord processRecord(FastqRecord in)
 	{
@@ -36,47 +39,20 @@ public class SlidingWindowTrimmer extends AbstractSingleRecordTrimmer
 		
 		if(total<totalRequiredQuality)
 			return null;
+
 		
 		int lengthToKeep=quals.length;
-		
-		for(int i=0;i<quals.length;i++)
-			{
-			int qual=0;
-			if(i+windowLength<quals.length)
-				qual=quals[i+windowLength];
-			
-			total=total-quals[i]+qual;
-			if(total<totalRequiredQuality)
-				{
-				lengthToKeep=i+1;
-				break;
-				}
-			}
-		
-		/*
-		if(lengthToKeep==quals.length)
-			{
-			// Shrink window at end 
-		
-			float tmpTotalRequiredQuality=totalRequiredQuality;
-		
-			for(int i=quals.length-windowLength;i<quals.length;i++)
-				{
-				//total=total-quals[i];
-				//tmpTotalRequiredQuality-=requiredQuality;
-				
-				total=total-quals[i]+quals[quals.length-1];
-				tmpWindowLength--;
-			
-				if(total<tmpTotalRequiredQuality)
-					{
-					lengthToKeep=i+tmpWindowLength;
-					break;
-					}
-				}
-			}
-		*/
-		/*
+
+		for(int i=0;i<quals.length-windowLength;i++)
+            {
+            total=total-quals[i]+quals[i+windowLength];
+            if(total<totalRequiredQuality)
+                {
+                lengthToKeep=i+windowLength;
+                break;
+                }
+            }
+				 
 		int i=lengthToKeep;
 		
 		int lastBaseQuality=quals[i-1];
@@ -85,19 +61,8 @@ public class SlidingWindowTrimmer extends AbstractSingleRecordTrimmer
 			i--;
 			lastBaseQuality=quals[i-1];
 			}
-		*/
 		
-		int i=lengthToKeep;
-		/*
-		while(i < quals.length)
-			{
-			int baseQuality=quals[i];
-			if(baseQuality<requiredQuality)
-				break;		
-			i++;
-			}
-		*/
-		
+
 		if(i<1)
 			return null;
 		

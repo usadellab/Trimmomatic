@@ -6,7 +6,7 @@ import java.util.concurrent.Callable;
 
 import org.usadellab.trimmomatic.TrimStats;
 import org.usadellab.trimmomatic.fastq.FastqRecord;
-import org.usadellab.trimmomatic.fastq.trim.Trimmer;
+import org.usadellab.trimmomatic.trim.Trimmer;
 
 public class BlockOfWork implements Callable<BlockOfRecords>
 {
@@ -167,7 +167,7 @@ public class BlockOfWork implements Callable<BlockOfRecords>
 						}
 					catch (RuntimeException e)
 						{
-						System.err.println("Exception processing reads: "+originalRecs[0].getName());
+						System.err.println("Exception processing read: "+originalRecs[0].getName());
 						throw e;
 						}
 					}

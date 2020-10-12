@@ -2,11 +2,10 @@
  * To change this template, choose Tools | Templates
  * and open the template in the editor.
  */
-package org.usadellab.trimmomatic.fastq.trim;
+package org.usadellab.trimmomatic.trim;
 
-import java.io.File;
-import java.io.IOException;
 import java.util.HashMap;
+
 import org.usadellab.trimmomatic.fastq.FastqRecord;
 
 /**

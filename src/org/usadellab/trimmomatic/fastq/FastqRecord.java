@@ -24,7 +24,7 @@ public class FastqRecord
 		if(sequence.length()!=quality.length())
 			throw new RuntimeException("Sequence and quality length don't match: '"+sequence+"' vs '"+quality+"'");
 	}
-
+	
 	public FastqRecord(FastqRecord base, int headPos, int length)
 	{
 		if(headPos<0)
@@ -56,6 +56,22 @@ public class FastqRecord
 		this.barcodeLabel = base.barcodeLabel;
 	}
 
+	public static FastqRecord make(String name, String sequence, int quality)
+	{
+		StringBuilder qualityBuilder=new StringBuilder();
+		for(int i=0;i<sequence.length();i++)
+			qualityBuilder.append((char)(33+quality));
+		
+		return new FastqRecord(name,sequence,name,qualityBuilder.toString(),33); 
+	}
+	
+	public static FastqRecord make(String name, String sequence)
+	{
+		return make(name,sequence,40);
+	}
+
+	
+	
 	public String getName()
 	{
 		return name;

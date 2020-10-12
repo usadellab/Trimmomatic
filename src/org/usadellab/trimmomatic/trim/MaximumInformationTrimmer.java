@@ -1,4 +1,4 @@
-package org.usadellab.trimmomatic.fastq.trim;
+package org.usadellab.trimmomatic.trim;
 
 import org.usadellab.trimmomatic.fastq.FastqRecord;
 

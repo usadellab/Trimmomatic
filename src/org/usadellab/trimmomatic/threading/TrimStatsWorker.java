@@ -1,15 +1,10 @@
 package org.usadellab.trimmomatic.threading;
 
-import java.io.PrintStream;
-import java.util.Iterator;
-import java.util.List;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.usadellab.trimmomatic.TrimStats;
-import org.usadellab.trimmomatic.fastq.FastqRecord;
-import org.usadellab.trimmomatic.fastq.FastqSerializer;
 
 public class TrimStatsWorker implements Runnable
 {

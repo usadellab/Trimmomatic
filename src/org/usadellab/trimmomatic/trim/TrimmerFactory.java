@@ -1,8 +1,6 @@
-package org.usadellab.trimmomatic.fastq.trim;
+package org.usadellab.trimmomatic.trim;
 
-import java.io.File;
 import java.io.IOException;
-import java.util.HashMap;
 
 
 public class TrimmerFactory
@@ -26,20 +24,20 @@ public class TrimmerFactory
 			}
 
 		if(trimmerName.equals("ILLUMINACLIP"))
-			return new IlluminaClippingTrimmer(args);
+			return IlluminaClippingTrimmer.makeIlluminaClippingTrimmer(args);
 		
 		if(trimmerName.equals("LEADING"))
 			return new LeadingTrimmer(args);
-		
-		if(trimmerName.equals("CROP"))
-			return new CropTrimmer(args);
-
-		if(trimmerName.equals("HEADCROP"))
-			return new HeadCropTrimmer(args);
-		
+	
 		if(trimmerName.equals("TRAILING"))
 			return new TrailingTrimmer(args);
 	
+		if(trimmerName.equals("HEADCROP"))
+			return new HeadCropTrimmer(args);
+
+		if(trimmerName.equals("CROP"))
+			return new CropTrimmer(args);
+
 		if(trimmerName.equals("SLIDINGWINDOW"))
 			return new SlidingWindowTrimmer(args);
 
@@ -49,6 +47,9 @@ public class TrimmerFactory
 		if(trimmerName.equals("MINLEN"))
 			return new MinLenTrimmer(args);
 
+		if(trimmerName.equals("AVGQUAL"))
+			return new AvgQualTrimmer(args);
+		
 		if(trimmerName.equals("TOPHRED33"))
 			return new ToPhred33Trimmer(args);
 
