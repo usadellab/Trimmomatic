@@ -45,7 +45,7 @@ public class FastqParser {
             return;
         }
         
-        if (line.startsWith("@")) {
+        if (line.charAt(0)=='@') {
             name = line.substring(1);
         } else {
             throw new RuntimeException("Invalid FASTQ name line: " + line);
@@ -55,7 +55,7 @@ public class FastqParser {
 
         line = reader.readLine();
 
-        if (line.startsWith("+")) {
+        if (line.charAt(0)=='+') {
             comment = line.substring(1);
         } else {
             throw new RuntimeException("Invalid FASTQ comment line: " + line);
@@ -77,21 +77,20 @@ public class FastqParser {
     public void parse(File file) throws IOException {
         String name = file.getName();
         fileLength = file.length();
-
+        
         posTrackInputStream=new PositionTrackingInputStream(new FileInputStream(file));
-        BufferedInputStream bufStream=new BufferedInputStream(posTrackInputStream, 1000000);
-
-        InputStream contentInputStream=bufStream;
+        
+        InputStream contentInputStream=posTrackInputStream;
         
         if (name.toLowerCase().endsWith(".gz")) {
-            contentInputStream=new ConcatGZIPInputStream(bufStream);
+            contentInputStream=new ConcatGZIPInputStream(posTrackInputStream);
         } else if (name.toLowerCase().endsWith(".bz2")) {
-        	contentInputStream=new BZip2InputStream(bufStream, false);
+            contentInputStream=new BZip2InputStream(posTrackInputStream, false);
         } else if (name.toLowerCase().endsWith(".zip")) {
-        	contentInputStream=new ZipInputStream(bufStream);
+            contentInputStream=new ZipInputStream(posTrackInputStream);
         }
         
-        reader=new BufferedReader(new InputStreamReader(contentInputStream));
+        reader=new BufferedReader(new InputStreamReader(contentInputStream), 32768);
         parseOne();
     }
 

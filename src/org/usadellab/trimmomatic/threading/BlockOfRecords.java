@@ -22,38 +22,38 @@ public class BlockOfRecords
 		this.originalRecs2=originalRecs2;
 	}
 
-	public synchronized List<List<FastqRecord>> getTrimmedRecs()
+	public List<List<FastqRecord>> getTrimmedRecs()
 	{
 		return trimmedRecs;
 	}
 
-	public synchronized List<TrimLogRecord> getTrimLogRecs()
+	public List<TrimLogRecord> getTrimLogRecs()
 	{
 		return trimLogRec;
 	}
 	
-	public synchronized void setTrimmedRecs(List<List<FastqRecord>> trimmedRecs, List<TrimLogRecord> trimLogRec)
+	public void setTrimmedRecs(List<List<FastqRecord>> trimmedRecs, List<TrimLogRecord> trimLogRec)
 	{
 		this.trimmedRecs = trimmedRecs;
 		this.trimLogRec = trimLogRec;
 	}
 
-	public synchronized List<FastqRecord> getOriginalRecs1()
+	public List<FastqRecord> getOriginalRecs1()
 	{
 		return originalRecs1;
 	}
 
-	public synchronized List<FastqRecord> getOriginalRecs2()
+	public List<FastqRecord> getOriginalRecs2()
 	{
 		return originalRecs2;
 	}
 
-	public synchronized TrimStats getStats()
+	public TrimStats getStats()
 	{
 		return stats;
 	}
 
-	public synchronized void setStats(TrimStats stats)
+	public void setStats(TrimStats stats)
 	{
 		this.stats = stats;
 	}

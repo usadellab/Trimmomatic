@@ -23,7 +23,6 @@ public class IlluminaClippingTrimmer implements Trimmer
 	public final static String SUFFIX_F = "/1";
 	public final static String SUFFIX_R = "/2";
 
-	public final static int MIN_PREFIX = 8;
 	public final static int INTERLEAVE = 4;
 
 	private final static float LOG10_4 = 0.60206f;
@@ -32,6 +31,9 @@ public class IlluminaClippingTrimmer implements Trimmer
 	private int minPalindromeLikelihood;
 	private int minSequenceLikelihood;
 
+	private int minPrefix = 8;
+	public boolean palindromeKeepBoth = false;
+	
 	private List<IlluminaPrefixPair> prefixPairs;
 
 	private Set<IlluminaClippingSeq> forwardSeqs;
@@ -47,6 +49,13 @@ public class IlluminaClippingTrimmer implements Trimmer
 		seedMaxMiss = Integer.parseInt(arg[1]);
 		minPalindromeLikelihood = Integer.parseInt(arg[2]);
 		minSequenceLikelihood = Integer.parseInt(arg[3]);
+		
+		if(arg.length>4)
+			minPrefix = Integer.parseInt(arg[4]);
+		
+		if(arg.length>5)
+			palindromeKeepBoth = Boolean.parseBoolean(arg[5]);
+		
 	}
 
     public IlluminaClippingTrimmer(File seqs, int seedMaxMiss, int minPalindromeLikelihood, int minSequenceLikelihood) {
@@ -177,7 +186,11 @@ public class IlluminaClippingTrimmer implements Trimmer
 				if (toKeep != null)
 					{
 					toKeepForward = min(toKeepForward, toKeep);
-					toKeepReverse = 0;
+					
+					if(palindromeKeepBoth)
+						toKeepReverse = min(toKeepReverse, toKeep);
+					else
+						toKeepReverse = 0;
 					}
 				}
 			}
@@ -258,19 +271,23 @@ public class IlluminaClippingTrimmer implements Trimmer
 		long packClip[] = clipSeq.getPack();
 		long mask= clipSeq.getMask();
 
-		for (int i = 0; i < packRec.length; i++)
+		int adjustedLength=packRec.length;
+		
+		for (int i = 0; i < adjustedLength; i++)
+			{
+			long comboMask=calcSingleMask(packRec.length-i) & mask;
+			
 			for (int j = 0; j < packClip.length; j++)
 				{
-				int diff = Long.bitCount((packRec[i] ^ packClip[j])&mask);
+				int diff = Long.bitCount((packRec[i] ^ packClip[j])&comboMask);
 
-				//System.out.println("Diff is "+diff);
-				
 				if (diff <= seedMax)
 					{
 					int offset = i - j * INTERLEAVE;
 					offsetSet.add(offset);
 					}
 				}
+			}
 
 		for (Integer offset : offsetSet)
 			{
@@ -337,6 +354,13 @@ public class IlluminaClippingTrimmer implements Trimmer
 
 		int count = 0;
 
+		int seedSkip=prefixLength-16;
+		if(seedSkip>0)
+			{
+			testIndex=seedSkip;
+			count=seedSkip;
+			}
+		
 		long ref1 = pack1[refIndex];
 		long ref2 = pack2[refIndex];
 
@@ -346,9 +370,12 @@ public class IlluminaClippingTrimmer implements Trimmer
 		int seqlen1 = rec1.getSequence().length() + prefixLength;
 		int seqlen2 = rec2.getSequence().length() + prefixLength;
 
-		int maxCount = (seqlen1 > seqlen2 ? seqlen1 : seqlen2) - 15 - MIN_PREFIX;
-
-		while (refIndex < pack1.length && refIndex < pack2.length && count < maxCount)
+		int maxCount = (seqlen1 > seqlen2 ? seqlen1 : seqlen2) - 15 - minPrefix;
+		
+		
+		
+		//while (refIndex < pack1.length && refIndex < pack2.length && count < maxCount)
+		while (count < maxCount)
 			{
 			ref1 = pack1[refIndex];
 			ref2 = pack2[refIndex];
@@ -384,7 +411,9 @@ public class IlluminaClippingTrimmer implements Trimmer
 				}
 
 			count++;
-			if ((count & 0x1) == 0)
+			int testRefIndex=refIndex+1;
+			
+			if (((count & 0x1) == 0) && testRefIndex < pack1.length && testRefIndex < pack2.length)
 				refIndex++;
 			else
 				testIndex++;
@@ -414,8 +443,6 @@ public class IlluminaClippingTrimmer implements Trimmer
 	private float calculatePalindromeDifferenceQuality(FastqRecord rec1, FastqRecord rec2, IlluminaPrefixPair pair,
 			int overlap, int skip1, int skip2)
 	{
-		// System.out.println("Len1: "+rec1.getSequence().length()+" Len2: "+rec2.getSequence().length()+" Overlap "+overlap+" skip1 "+skip1+" skip2 "+skip2);
-
 		String seq1 = rec1.getSequence();
 		String seq2 = rec2.getSequence();
 
@@ -576,15 +603,8 @@ public class IlluminaClippingTrimmer implements Trimmer
 			System.err.println("Using Clipping Sequence: '"+seq+"'");
 		
 			this.seq = seq;
-			this.mask = 0xFFFFFFFFFFFFFFFFL; 
+			this.mask = calcSingleMask(seq.length()); 
 			
-			if(seq.length()<16)
-				{
-				mask<<=(16-seq.length())*4;
-//				seq=(seq+"NNNNNNNNNNNNNNNN").substring(0,16);
-				}
-			
-			//System.out.println("Sequence is "+seq);
 			long fullPack[] = packSeqExternal(seq);
 
 			pack = new long[(fullPack.length + INTERLEAVE - 1) / INTERLEAVE];
@@ -648,10 +668,20 @@ public class IlluminaClippingTrimmer implements Trimmer
 			offset++;
 			}
 	
-		//System.out.println("Last pack is "+out[seq.length()-1]);
-		
 		return out;
 	}
+	
+	public static long calcSingleMask(int length)
+	{
+		long mask=0xFFFFFFFFFFFFFFFFL; 
+	
+		if(length<16)
+			mask<<=(16-length)*4;
+
+		return mask;
+	}
+	
+	
 	
 	
 	public static long[] packSeqInternal(String seq, boolean reverse)
@@ -695,6 +725,42 @@ public class IlluminaClippingTrimmer implements Trimmer
 		return out;
 	}
 
+	public String unpack(long pack)
+	{
+		StringBuilder sb=new StringBuilder();
+		
+		for(int i=0;i<16;i++)
+			{
+			int tmp=(int)((pack>>>60) & 0xF);
+			
+			switch(tmp)
+				{
+				case BASE_A:
+					sb.append("A");
+					break;
+			
+				case BASE_C:
+					sb.append("C");
+					break;
+					
+				case BASE_G:
+					sb.append("G");
+					break;
+					
+				case BASE_T:
+					sb.append("T");
+					break;
+					
+				default:
+					sb.append("["+tmp+"]");
+				}
+			pack<<=4;
+			}
+		
+		return sb.toString();
+	}
+	
+	
 	private static int packCh(char ch, boolean rev)
 	{
 		if (!rev)

@@ -31,7 +31,7 @@ public class PositionTrackingInputStream extends InputStream
 	}
 
 	@Override
-	public synchronized void mark(int readlimit)
+	public void mark(int readlimit)
 	{
 		wrappedStream.mark(readlimit);
 		markedPosition.set(currentPosition.get());
@@ -66,7 +66,7 @@ public class PositionTrackingInputStream extends InputStream
 	}
 
 	@Override
-	public synchronized void reset() throws IOException
+	public void reset() throws IOException
 	{
 		wrappedStream.reset();
 		

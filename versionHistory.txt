@@ -10,4 +10,9 @@ Version 0.17: Add support for HEADCROP task (HEADCROP:<BasesToRemove>)
 
 Version 0.24: Bugfix for concatenated gzip files
               Threading 
+
+Version 0.25: Support for -jar invocation
+
+Version 0.27: Support for short adapters and/or short overlaps
+              Beta of MAXINFO trimmer
               

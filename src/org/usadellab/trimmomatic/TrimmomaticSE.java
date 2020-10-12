@@ -45,8 +45,8 @@ public class TrimmomaticSE
 	public void processSingleThreaded(FastqParser parser, FastqSerializer serializer, Trimmer trimmers[],
 			PrintStream trimLogStream) throws IOException
 	{
-		TrimStats stats=new TrimStats();
-		
+		TrimStats stats = new TrimStats();
+
 		FastqRecord recs[] = new FastqRecord[1];
 		FastqRecord originalRecs[] = new FastqRecord[1];
 
@@ -58,11 +58,11 @@ public class TrimmomaticSE
 				{
 				try
 					{
-					recs=trimmers[i].processRecords(recs);
+					recs = trimmers[i].processRecords(recs);
 					}
 				catch (RuntimeException e)
 					{
-					System.err.println("Exception processing read: "+originalRecs[0].getName());
+					System.err.println("Exception processing read: " + originalRecs[0].getName());
 					throw e;
 					}
 				}
@@ -73,7 +73,7 @@ public class TrimmomaticSE
 				}
 
 			stats.logPair(originalRecs, recs);
-			
+
 			if (trimLogStream != null)
 				{
 				for (int i = 0; i < originalRecs.length; i++)
@@ -96,100 +96,95 @@ public class TrimmomaticSE
 					}
 				}
 			}
-		
+
 		System.err.println(stats.getStatsSE());
 	}
 
-	
-	
-	
-	public void processMultiThreaded(FastqParser parser, FastqSerializer serializer, 
-			Trimmer trimmers[], PrintStream trimLogStream, int threads) throws IOException
+	public void processMultiThreaded(FastqParser parser, FastqSerializer serializer, Trimmer trimmers[],
+			PrintStream trimLogStream, int threads) throws IOException
 	{
-		ArrayBlockingQueue<List<FastqRecord>> parserQueue=new ArrayBlockingQueue<List<FastqRecord>>(threads);
-		ArrayBlockingQueue<Runnable> taskQueue=new ArrayBlockingQueue<Runnable>(threads*2);
-		ArrayBlockingQueue<Future<BlockOfRecords>> serializerQueue=new ArrayBlockingQueue<Future<BlockOfRecords>>(threads*5);
-		
-		ParserWorker parserWorker=new ParserWorker(parser, parserQueue);
-		Thread parserThread=new Thread(parserWorker);
-		ThreadPoolExecutor taskExec=new ThreadPoolExecutor(threads,threads,0,TimeUnit.SECONDS, taskQueue);
-		SerializerWorker serializerWorker=new SerializerWorker(serializer, serializerQueue, 0);	
-		Thread serializerThread=new Thread(serializerWorker);
-		
-		ArrayBlockingQueue<Future<BlockOfRecords>> trimStatsQueue=new ArrayBlockingQueue<Future<BlockOfRecords>>(threads*5);
-		TrimStatsWorker statsWorker=new TrimStatsWorker(trimStatsQueue);
-		Thread statsThread=new Thread(statsWorker);
-		
-		ArrayBlockingQueue<Future<BlockOfRecords>> trimLogQueue=null;
-		TrimLogWorker trimLogWorker=null;
-		Thread trimLogThread=null;
-		
-		if(trimLogStream!=null)
+		ArrayBlockingQueue<List<FastqRecord>> parserQueue = new ArrayBlockingQueue<List<FastqRecord>>(threads);
+		ArrayBlockingQueue<Runnable> taskQueue = new ArrayBlockingQueue<Runnable>(threads * 2);
+		ArrayBlockingQueue<Future<BlockOfRecords>> serializerQueue = new ArrayBlockingQueue<Future<BlockOfRecords>>(
+				threads * 5);
+
+		ParserWorker parserWorker = new ParserWorker(parser, parserQueue);
+		Thread parserThread = new Thread(parserWorker);
+		ThreadPoolExecutor taskExec = new ThreadPoolExecutor(threads, threads, 0, TimeUnit.SECONDS, taskQueue);
+		SerializerWorker serializerWorker = new SerializerWorker(serializer, serializerQueue, 0);
+		Thread serializerThread = new Thread(serializerWorker);
+
+		ArrayBlockingQueue<Future<BlockOfRecords>> trimStatsQueue = new ArrayBlockingQueue<Future<BlockOfRecords>>(
+				threads * 5);
+		TrimStatsWorker statsWorker = new TrimStatsWorker(trimStatsQueue);
+		Thread statsThread = new Thread(statsWorker);
+
+		ArrayBlockingQueue<Future<BlockOfRecords>> trimLogQueue = null;
+		TrimLogWorker trimLogWorker = null;
+		Thread trimLogThread = null;
+
+		if (trimLogStream != null)
 			{
-			trimLogQueue=new ArrayBlockingQueue<Future<BlockOfRecords>>(threads*5);
-			trimLogWorker=new TrimLogWorker(trimLogStream, trimLogQueue);
-			trimLogThread=new Thread(trimLogWorker);
+			trimLogQueue = new ArrayBlockingQueue<Future<BlockOfRecords>>(threads * 5);
+			trimLogWorker = new TrimLogWorker(trimLogStream, trimLogQueue);
+			trimLogThread = new Thread(trimLogWorker);
 			trimLogThread.start();
 			}
-		
+
 		parserThread.start();
 		serializerThread.start();
 		statsThread.start();
-		
-		boolean done=false;
-		
-		List<FastqRecord> recs1=null;
-	
-		try	{
-			while(!done)
-				{
-				recs1=null;
-				while(recs1==null)
-					recs1=parserQueue.poll(1, TimeUnit.SECONDS);
 
-				if(recs1==null || recs1.size()==0)
-					done=true;
-		
-				BlockOfRecords bor=new BlockOfRecords(recs1, null);
-				BlockOfWork work=new BlockOfWork(trimmers, bor, false, trimLogStream!=null);
-	
-				while(taskQueue.remainingCapacity()<1)
+		boolean done = false;
+
+		List<FastqRecord> recs1 = null;
+
+		try
+			{
+			while (!done)
+				{
+				recs1 = null;
+				while (recs1 == null)
+					recs1 = parserQueue.poll(1, TimeUnit.SECONDS);
+
+				if (recs1 == null || recs1.size() == 0)
+					done = true;
+
+				BlockOfRecords bor = new BlockOfRecords(recs1, null);
+				BlockOfWork work = new BlockOfWork(trimmers, bor, false, trimLogStream != null);
+
+				while (taskQueue.remainingCapacity() < 1)
 					Thread.sleep(100);
-					
-				Future<BlockOfRecords> future=taskExec.submit(work);
-				
+
+				Future<BlockOfRecords> future = taskExec.submit(work);
+
 				serializerQueue.put(future);
 				trimStatsQueue.put(future);
-				
-				if(trimLogQueue!=null)
+
+				if (trimLogQueue != null)
 					trimLogQueue.put(future);
 				}
-			
+
 			parserThread.join();
 			parser.close();
-			
+
 			taskExec.shutdown();
 			taskExec.awaitTermination(1, TimeUnit.HOURS);
 
 			serializerThread.join();
-			if(trimLogThread!=null)
+			if (trimLogThread != null)
 				trimLogThread.join();
-			
+
 			statsThread.join();
-			System.err.println(statsWorker.getStats().getStatsSE());		
+			System.err.println(statsWorker.getStats().getStatsSE());
 			}
-		catch(InterruptedException e)
+		catch (InterruptedException e)
 			{
 			throw new RuntimeException(e);
 			}
-		
+
 	}
 
-	
-	
-	
-	
-	
 	public void process(File input, File output, Trimmer trimmers[], int phredOffset, File trimLog, int threads)
 			throws IOException
 	{
@@ -214,11 +209,11 @@ public class TrimmomaticSE
 			trimLogStream.close();
 	}
 
-	public static void main(String[] args) throws IOException
+	public static boolean run(String[] args) throws IOException
 	{
 		int argIndex = 0;
 		int phredOffset = 64;
-		int threads=1;
+		int threads = 1;
 
 		boolean badOption = false;
 
@@ -231,8 +226,8 @@ public class TrimmomaticSE
 				phredOffset = 33;
 			else if (arg.equals("-phred64"))
 				phredOffset = 64;
-			else if(arg.equals("-threads"))
-				threads=Integer.parseInt(args[argIndex++]);
+			else if (arg.equals("-threads"))
+				threads = Integer.parseInt(args[argIndex++]);
 			else if (arg.equals("-trimlog"))
 				{
 				if (argIndex < args.length)
@@ -248,17 +243,13 @@ public class TrimmomaticSE
 			}
 
 		if (args.length - argIndex < 3 || badOption)
-			{
-			System.err
-					.println("Usage: TrimmomaticSE [-threads <threads>] [-phred33|-phred64] [-trimlog <trimLogFile>] <inputFile> <outputFile> <trimmer1>...");
-			System.exit(1);
-			}
+			return false;
 
 		System.err.print("TrimmomaticSE: Started with arguments:");
-		for(String arg: args)
-			System.err.print(" "+arg);
+		for (String arg : args)
+			System.err.print(" " + arg);
 		System.err.println();
-		
+
 		File input = new File(args[argIndex++]);
 		File output = new File(args[argIndex++]);
 
@@ -270,8 +261,19 @@ public class TrimmomaticSE
 
 		TrimmomaticSE tm = new TrimmomaticSE();
 		tm.process(input, output, trimmers, phredOffset, trimLog, threads);
-		
+
 		System.err.println("TrimmomaticSE: Completed successfully");
+		return true;
+	}
+
+	public static void main(String[] args) throws IOException
+	{
+		if(!run(args))
+			{
+			System.err
+					.println("Usage: TrimmomaticSE [-threads <threads>] [-phred33|-phred64] [-trimlog <trimLogFile>] <inputFile> <outputFile> <trimmer1>...");
+			System.exit(1);
+			}
 	}
 
 }

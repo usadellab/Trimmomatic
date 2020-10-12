@@ -1,8 +1,10 @@
 <project name="Trimmomatic" default="dist" basedir=".">
-	<property name="version" value="0.25"/>
+	<property name="version" value="0.27"/>
 	
 	<property name="src" location="src" />
 	<property name="lib" location="lib" />
+
+	<property name="adapters" location="adapters" />
 
 	<property name="distsrc" location="distSrc" />
 	
@@ -61,11 +63,12 @@
     		</fileset>
 		</copy>
 	
-		<jar jarfile="${dist_jar}/trimmomatic-${version}.jar" basedir="${dist_unpack}" />
+		<jar jarfile="${dist_jar}/trimmomatic-${version}.jar" basedir="${dist_unpack}" manifest="MANIFEST.MF"/>
 		
 		<zip destfile="${dist}/Trimmomatic-${version}.zip">
 			<zipfileset prefix="Trimmomatic-${version}" dir="${distsrc}"/>
 	    	<zipfileset prefix="Trimmomatic-${version}" dir="${dist_jar}" includes="trimmomatic-${version}.jar"/>
+	    	<zipfileset prefix="Trimmomatic-${version}/adapters" dir="adapters" includes="*"/>
 		</zip>
 		
 		<zip destfile="${dist}/Trimmomatic-Src-${version}.zip">

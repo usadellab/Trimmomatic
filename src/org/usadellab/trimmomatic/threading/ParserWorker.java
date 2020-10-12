@@ -35,7 +35,7 @@ public class ParserWorker implements Runnable
 	{
 		try
 			{
-			List<FastqRecord> recs=new ArrayList<FastqRecord>();
+			List<FastqRecord> recs=new ArrayList<FastqRecord>(BLOCKSIZE);
 	
 			while(parser.hasNext())
 				{

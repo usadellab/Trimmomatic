@@ -42,6 +42,9 @@ public class TrimmerFactory
 	
 		if(trimmerName.equals("SLIDINGWINDOW"))
 			return new SlidingWindowTrimmer(args);
+
+		if(trimmerName.equals("MAXINFO"))
+			return new MaximumInformationTrimmer(args);
 		
 		if(trimmerName.equals("MINLEN"))
 			return new MinLenTrimmer(args);

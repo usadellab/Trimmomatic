@@ -16,14 +16,11 @@ public class SlidingWindowTrimmer extends AbstractSingleRecordTrimmer
 		totalRequiredQuality=requiredQuality*windowLength; // Convert to total
 	}
 
-        public SlidingWindowTrimmer(int windowLength, float requiredQuality) {
-            this.windowLength = windowLength;
-            this.requiredQuality = requiredQuality;
-            this.totalRequiredQuality = totalRequiredQuality;            
-            totalRequiredQuality=requiredQuality*windowLength; // Convert to total
-        }
-        
-        
+    public SlidingWindowTrimmer(int windowLength, float requiredQuality) {
+        this.windowLength = windowLength;
+        this.requiredQuality = requiredQuality;
+        totalRequiredQuality=requiredQuality*windowLength; // Convert to total
+    }
 
 	@Override
 	public FastqRecord processRecord(FastqRecord in)
@@ -42,16 +39,44 @@ public class SlidingWindowTrimmer extends AbstractSingleRecordTrimmer
 		
 		int lengthToKeep=quals.length;
 		
-		for(int i=0;i<quals.length-windowLength;i++)
+		for(int i=0;i<quals.length;i++)
 			{
-			total=total-quals[i]+quals[i+windowLength];
+			int qual=0;
+			if(i+windowLength<quals.length)
+				qual=quals[i+windowLength];
+			
+			total=total-quals[i]+qual;
 			if(total<totalRequiredQuality)
 				{
-				lengthToKeep=i+windowLength;
+				lengthToKeep=i+1;
 				break;
 				}
 			}
-	
+		
+		/*
+		if(lengthToKeep==quals.length)
+			{
+			// Shrink window at end 
+		
+			float tmpTotalRequiredQuality=totalRequiredQuality;
+		
+			for(int i=quals.length-windowLength;i<quals.length;i++)
+				{
+				//total=total-quals[i];
+				//tmpTotalRequiredQuality-=requiredQuality;
+				
+				total=total-quals[i]+quals[quals.length-1];
+				tmpWindowLength--;
+			
+				if(total<tmpTotalRequiredQuality)
+					{
+					lengthToKeep=i+tmpWindowLength;
+					break;
+					}
+				}
+			}
+		*/
+		/*
 		int i=lengthToKeep;
 		
 		int lastBaseQuality=quals[i-1];
@@ -60,6 +85,18 @@ public class SlidingWindowTrimmer extends AbstractSingleRecordTrimmer
 			i--;
 			lastBaseQuality=quals[i-1];
 			}
+		*/
+		
+		int i=lengthToKeep;
+		/*
+		while(i < quals.length)
+			{
+			int baseQuality=quals[i];
+			if(baseQuality<requiredQuality)
+				break;		
+			i++;
+			}
+		*/
 		
 		if(i<1)
 			return null;
