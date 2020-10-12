@@ -50,7 +50,7 @@ public class TrimmomaticPE extends Trimmomatic
 
 	public void processSingleThreaded(FastqParser parser1, FastqParser parser2, FastqSerializer serializer1P,
 			FastqSerializer serializer1U, FastqSerializer serializer2P, FastqSerializer serializer2U,
-			Trimmer trimmers[], PrintStream trimLogStream, PairingValidator pairingValidator) throws IOException
+			Trimmer trimmers[], PrintStream trimLogStream, PrintStream statsSummaryStream, PairingValidator pairingValidator) throws IOException
 	{
 		TrimStats stats = new TrimStats();
 
@@ -115,12 +115,13 @@ public class TrimmomaticPE extends Trimmomatic
 				}
 			}
 
-		logger.infoln(stats.getStatsPE());
+		logger.infoln(stats.processStatsPE(statsSummaryStream));
 	}
 
 	public void processMultiThreaded(FastqParser parser1, FastqParser parser2, FastqSerializer serializer1P,
 			FastqSerializer serializer1U, FastqSerializer serializer2P, FastqSerializer serializer2U,
-			Trimmer trimmers[], PrintStream trimLogStream, PairingValidator pairingValidator, int threads) throws IOException
+			Trimmer trimmers[], PrintStream trimLogStream, PrintStream statsSummaryStream,
+			PairingValidator pairingValidator, int threads) throws IOException
 	{
 		ArrayBlockingQueue<List<FastqRecord>> parser1Queue = new ArrayBlockingQueue<List<FastqRecord>>(threads);
 		ArrayBlockingQueue<List<FastqRecord>> parser2Queue = new ArrayBlockingQueue<List<FastqRecord>>(threads);
@@ -249,7 +250,7 @@ public class TrimmomaticPE extends Trimmomatic
 				trimLogThread.join();
 
 			statsThread.join();
-			logger.infoln(statsWorker.getStats().getStatsPE());
+			logger.infoln(statsWorker.getStats().processStatsPE(statsSummaryStream));
 			}
 		catch (InterruptedException e)
 			{
@@ -258,7 +259,7 @@ public class TrimmomaticPE extends Trimmomatic
 	}
 
 	public void process(File input1, File input2, File output1P, File output1U, File output2P, File output2U,
-			Trimmer trimmers[], int phredOffset, File trimLog, boolean validatePairing, int threads) throws IOException
+			Trimmer trimmers[], int phredOffset, File trimLog, File statsSummaryFile, boolean validatePairing, int threads) throws IOException
 	{
 		FastqParser parser1 = new FastqParser(phredOffset);
 		parser1.parse(input1);
@@ -302,6 +303,10 @@ public class TrimmomaticPE extends Trimmomatic
 			// FileOutputStream(trimLog),1000000),false);
 			trimLogStream = new PrintStream(trimLog);
 
+		PrintStream statsSummaryStream = null;
+		if(statsSummaryFile!=null)
+			 statsSummaryStream = new PrintStream(statsSummaryFile);
+				
 		PairingValidator pairingValidator=null;
 		
 		if(validatePairing)
@@ -309,10 +314,10 @@ public class TrimmomaticPE extends Trimmomatic
 		
 		if (threads == 1)
 			processSingleThreaded(parser1, parser2, serializer1P, serializer1U, serializer2P, serializer2U, trimmers,
-					trimLogStream, pairingValidator);
+					trimLogStream, statsSummaryStream, pairingValidator);
 		else
 			processMultiThreaded(parser1, parser2, serializer1P, serializer1U, serializer2P, serializer2U, trimmers,
-					trimLogStream, pairingValidator, threads);
+					trimLogStream, statsSummaryStream, pairingValidator, threads);
 
 		serializer1P.close();
 		serializer1U.close();
@@ -321,6 +326,9 @@ public class TrimmomaticPE extends Trimmomatic
 
 		if (trimLogStream != null)
 			trimLogStream.close();
+		
+		if(statsSummaryStream != null)
+			statsSummaryStream.close();
 	}
 	
 	private static int getFileExtensionIndex(String str)
@@ -414,6 +422,7 @@ public class TrimmomaticPE extends Trimmomatic
 		boolean showVersion=false;
 		
 		File trimLog = null;
+		File statsSummary = null;
 
 		List<String> nonOptionArgs=new ArrayList<String>();
 		
@@ -433,6 +442,13 @@ public class TrimmomaticPE extends Trimmomatic
 					{
 					if (argIndex < args.length)
 						trimLog = new File(args[argIndex++]);
+					else
+						badOption = true;
+					}
+				else if (arg.equals("-summary"))
+					{
+					if (argIndex < args.length)
+						statsSummary = new File(args[argIndex++]);
 					else
 						badOption = true;
 					}
@@ -536,7 +552,8 @@ public class TrimmomaticPE extends Trimmomatic
 		Trimmer trimmers[]=createTrimmers(logger, nonOptionArgsIter);
 				
 		TrimmomaticPE tm = new TrimmomaticPE(logger);
-		tm.process(inputs[0], inputs[1], outputs[0], outputs[1], outputs[2], outputs[3], trimmers, phredOffset, trimLog, validatePairs, threads);
+		tm.process(inputs[0], inputs[1], outputs[0], outputs[1], outputs[2], outputs[3], 
+				trimmers, phredOffset, trimLog, statsSummary, validatePairs, threads);
 
 		logger.infoln("TrimmomaticPE: Completed successfully");
 		return true;
@@ -546,8 +563,7 @@ public class TrimmomaticPE extends Trimmomatic
 	{
 		if (!run(args))
 			{
-			System.err
-					.println("Usage: TrimmomaticPE [-threads <threads>] [-phred33|-phred64] [-trimlog <trimLogFile>] [-quiet] [-validatePairs] [-basein <inputBase> | <inputFile1> <inputFile2>] [-baseout <outputBase> | <outputFile1P> <outputFile1U> <outputFile2P> <outputFile2U>] <trimmer1>...");
+			System.err.println("Usage: [-version] [-threads <threads>] [-phred33|-phred64] [-trimlog <trimLogFile>] [-summary <statsSummaryFile>] [-quiet] [-validatePairs] [-basein <inputBase> | <inputFile1> <inputFile2>] [-baseout <outputBase> | <outputFile1P> <outputFile1U> <outputFile2P> <outputFile2U>] <trimmer1>...");
 			System.exit(1);
 			}
 	}

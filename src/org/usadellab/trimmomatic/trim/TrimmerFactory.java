@@ -60,6 +60,9 @@ public class TrimmerFactory
 		
 		if(trimmerName.equals("AVGQUAL"))
 			return new AvgQualTrimmer(args);
+
+		if(trimmerName.equals("BASECOUNT"))
+			return new BaseCountTrimmer(args);
 		
 		if(trimmerName.equals("TOPHRED33"))
 			return new ToPhred33Trimmer(args);
