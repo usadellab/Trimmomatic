@@ -72,7 +72,7 @@
 		</zip>
 		
 		<zip destfile="${dist}/Trimmomatic-Src-${version}.zip">
-		    <zipfileset dir="." includes="src/**/*,adapters/**/*,distSrc/**/*,lib/**/*,build.xml,versionHistory.txt" prefix="trimmomatic-${version}/"/>
+		    <zipfileset dir="." includes="src/**/*,adapters/**/*,distSrc/**/*,lib/**/*,build.xml,versionHistory.txt,MANIFEST.MF" prefix="trimmomatic-${version}/"/>
 		</zip>
 
 	</target>
