@@ -7,12 +7,15 @@ import java.util.concurrent.atomic.AtomicLong;
 public class PositionTrackingInputStream extends InputStream
 {
 	private InputStream wrappedStream;
+	private long length;
+	
 	private AtomicLong currentPosition;
 	private AtomicLong markedPosition;
-
-	public PositionTrackingInputStream(InputStream wrappedStream)
+	
+	public PositionTrackingInputStream(InputStream wrappedStream, long length)
 	{
 		this.wrappedStream=wrappedStream;
+		this.length=length;
 		
 		this.currentPosition=new AtomicLong();
 		this.markedPosition=new AtomicLong();
@@ -99,5 +102,11 @@ public class PositionTrackingInputStream extends InputStream
 	{
 		return currentPosition.get();
 	}
+	
+    public int getProgressPercentage() {
+    	long bytesRead=currentPosition.get();
+	
+    	return (int)(((float) bytesRead / length) * 100);    
+}
 	
 }

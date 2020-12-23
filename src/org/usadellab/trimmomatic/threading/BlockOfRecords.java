@@ -1,17 +1,20 @@
 package org.usadellab.trimmomatic.threading;
 
-import java.util.Iterator;
 import java.util.List;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 import org.usadellab.trimmomatic.TrimStats;
 import org.usadellab.trimmomatic.fastq.FastqRecord;
+import org.usadellab.trimmomatic.threading.serializer.SerializedBlock;
+import org.usadellab.trimmomatic.threading.trimlog.TrimLogRecord;
 
-public class BlockOfRecords
+public class BlockOfRecords implements Future<BlockOfRecords>
 {
 	private List<FastqRecord>originalRecs1;
 	private List<FastqRecord>originalRecs2;
-	
-	private List<List<FastqRecord>> trimmedRecs;
 
 	private List<TrimLogRecord> trimLogRec;
 	
@@ -23,9 +26,18 @@ public class BlockOfRecords
 		this.originalRecs2=originalRecs2;
 	}
 
-	public List<List<FastqRecord>> getTrimmedRecs()
+	public List<FastqRecord> takeOriginalRecs1()
 	{
-		return trimmedRecs;
+		List<FastqRecord> or1 = originalRecs1;
+		originalRecs1=null;
+		return or1;
+	}
+
+	public List<FastqRecord> takeOriginalRecs2()
+	{
+		List<FastqRecord> or2 = originalRecs2;
+		originalRecs2=null;
+		return or2;
 	}
 
 	public List<TrimLogRecord> getTrimLogRecs()
@@ -33,22 +45,11 @@ public class BlockOfRecords
 		return trimLogRec;
 	}
 	
-	public void setTrimmedRecs(List<List<FastqRecord>> trimmedRecs, List<TrimLogRecord> trimLogRec)
+	public void setTrimLogRecs(List<TrimLogRecord> trimLogRec)
 	{
-		this.trimmedRecs = trimmedRecs;
 		this.trimLogRec = trimLogRec;
 	}
-
-	public List<FastqRecord> getOriginalRecs1()
-	{
-		return originalRecs1;
-	}
-
-	public List<FastqRecord> getOriginalRecs2()
-	{
-		return originalRecs2;
-	}
-
+	
 	public TrimStats getStats()
 	{
 		return stats;
@@ -58,5 +59,39 @@ public class BlockOfRecords
 	{
 		this.stats = stats;
 	}
+
+	
+	@Override
+	public boolean cancel(boolean mayInterruptIfRunning)
+	{
+		return false;
+	}
+ 
+	@Override
+	public boolean isCancelled()
+	{
+		return false;
+	}
+
+	@Override
+	public boolean isDone()
+	{
+		return true;
+	}
+
+	@Override
+	public BlockOfRecords get() throws InterruptedException, ExecutionException
+	{
+		return this;
+	}
+
+	@Override
+	public BlockOfRecords get(long timeout, TimeUnit unit)
+			throws InterruptedException, ExecutionException, TimeoutException
+	{
+		return this;
+	}
+	
+	
 	
 }

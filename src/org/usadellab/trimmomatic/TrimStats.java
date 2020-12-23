@@ -65,20 +65,24 @@ public class TrimStats
 			}
 	}
 	
-	public String processStatsSE(PrintStream statsSummaryStream)
+	public String processStatsSE(File statsSummary) throws IOException
 	{
 		long dropped=readsInput-readsSurvivingForward;
 		
 		double survivingForwardPercent=(100.0*readsSurvivingForward)/readsInput;
 		double droppedPercent=(100.0*dropped)/readsInput;
 		
-		if(statsSummaryStream!=null)
+		if(statsSummary!=null)
 			{
+			PrintStream statsSummaryStream = new PrintStream(statsSummary);
+			
 			statsSummaryStream.println("Input Reads: "+readsInput);
 			statsSummaryStream.println("Surviving Reads: "+readsSurvivingForward);
 			statsSummaryStream.println("Surviving Read Percent: "+formatter.format(survivingForwardPercent));
 			statsSummaryStream.println("Dropped Reads: "+dropped);
-			statsSummaryStream.println("Dropped Read Percent: "+formatter.format(droppedPercent));				
+			statsSummaryStream.println("Dropped Read Percent: "+formatter.format(droppedPercent));
+			
+			statsSummaryStream.close();
 			}
 				
 		return "Input Reads: "+readsInput+
@@ -86,7 +90,7 @@ public class TrimStats
 			   "%) Dropped: "+dropped+" ("+formatter.format(droppedPercent)+"%)";
 	}
 	
-	public String processStatsPE(PrintStream statsSummaryStream)
+	public String processStatsPE(File statsSummary) throws IOException
 	{
 		long dropped=readsInput-readsSurvivingBoth-readsSurvivingForward-readsSurvivingReverse;
 	
@@ -95,8 +99,10 @@ public class TrimStats
 		double survivingReversePercent=(100.0*readsSurvivingReverse)/readsInput;
 		double droppedPercent=(100.0*dropped)/readsInput;
 
-		if(statsSummaryStream!=null)
+		if(statsSummary!=null)
 			{
+			PrintStream statsSummaryStream = new PrintStream(statsSummary);
+			
 			statsSummaryStream.println("Input Read Pairs: "+readsInput);
 			statsSummaryStream.println("Both Surviving Reads: "+readsSurvivingBoth);
 			statsSummaryStream.println("Both Surviving Read Percent: "+formatter.format(survivingBothPercent));
@@ -106,6 +112,8 @@ public class TrimStats
 			statsSummaryStream.println("Reverse Only Surviving Read Percent: "+formatter.format(survivingReversePercent));				
 			statsSummaryStream.println("Dropped Reads: "+dropped);
 			statsSummaryStream.println("Dropped Read Percent: "+formatter.format(droppedPercent));
+			
+			statsSummaryStream.close();
 			}
 		
 		return "Input Read Pairs: "+readsInput+

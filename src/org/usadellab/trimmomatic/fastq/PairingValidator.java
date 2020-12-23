@@ -24,8 +24,8 @@ public class PairingValidator
 
 	private boolean validateNames(String name1, String name2)
 	{
-		String canon1=FastqNamePattern.canonicalize(name1);
-		String canon2=FastqNamePattern.canonicalize(name2);
+		String canon1=RecordNamePattern.canonicalize(name1);
+		String canon2=RecordNamePattern.canonicalize(name2);
 		
 		if(canon1!=null && canon2!=null)
 			return canon1.equals(canon2);

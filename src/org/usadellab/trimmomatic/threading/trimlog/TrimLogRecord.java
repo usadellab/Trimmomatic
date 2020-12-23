@@ -1,7 +1,7 @@
 /**
  * 
  */
-package org.usadellab.trimmomatic.threading;
+package org.usadellab.trimmomatic.threading.trimlog;
 
 public class TrimLogRecord
 {

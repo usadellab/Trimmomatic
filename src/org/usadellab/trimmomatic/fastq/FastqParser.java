@@ -11,8 +11,9 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.zip.ZipInputStream;
 
 import org.itadaki.bzip2.BZip2InputStream;
-import org.usadellab.trimmomatic.util.ConcatGZIPInputStream;
 import org.usadellab.trimmomatic.util.PositionTrackingInputStream;
+import org.usadellab.trimmomatic.util.compression.CompressionFormat;
+import org.usadellab.trimmomatic.util.compression.ConcatGZIPInputStream;
 
 public class FastqParser {
 
@@ -21,12 +22,11 @@ public class FastqParser {
     private int phredOffset;
     private ArrayDeque<FastqRecord> deque;
     int qualHistogram[];
-    int patternHistogram[];
     
     private PositionTrackingInputStream posTrackInputStream;
     private BufferedReader reader;
     private FastqRecord current;
-    private long fileLength;
+    
 
     private AtomicBoolean atEOF;
     
@@ -93,9 +93,7 @@ public class FastqParser {
     	if(atEOF.get())
     		return 100;
     	
-    	long bytesRead=posTrackInputStream.getPosition();
-    	
-    	return (int)(((float) bytesRead / fileLength) * 100);    
+    	return posTrackInputStream.getProgressPercentage();
     }
 
     
@@ -128,22 +126,12 @@ public class FastqParser {
     }
     
     
-    public void parse(File file) throws IOException {
-        String name = file.getName();
-        fileLength = file.length();
-        
-        posTrackInputStream=new PositionTrackingInputStream(new FileInputStream(file));
-        
-        InputStream contentInputStream=posTrackInputStream;
-        
-        if (name.toLowerCase().endsWith(".gz")) {
-            contentInputStream=new ConcatGZIPInputStream(posTrackInputStream);
-        } else if (name.toLowerCase().endsWith(".bz2")) {
-            contentInputStream=new BZip2InputStream(posTrackInputStream, false);
-        } else if (name.toLowerCase().endsWith(".zip")) {
-            contentInputStream=new ZipInputStream(posTrackInputStream);
-        }
-        
+    public void open(File input) throws IOException 
+    {            
+    	posTrackInputStream=new PositionTrackingInputStream(new FileInputStream(input), input.length());
+    	
+    	InputStream contentInputStream = CompressionFormat.wrapStreamForParsing(posTrackInputStream, input.getName());
+    
         reader=new BufferedReader(new InputStreamReader(contentInputStream), 32768);
         
         if(phredOffset==0)

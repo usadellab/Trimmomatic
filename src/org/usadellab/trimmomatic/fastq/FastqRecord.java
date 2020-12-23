@@ -82,13 +82,15 @@ public class FastqRecord
 		return sequence;
 	}
 
-        public String getBarcodeLabel() {
-            return barcodeLabel;
-        }
+    public String getBarcodeLabel() 
+    {
+        return barcodeLabel;
+    }
 
-        public void setBarcodeLabel(String barcodeLabel) {
-            this.barcodeLabel = barcodeLabel;
-        }
+    public void setBarcodeLabel(String barcodeLabel) 
+    {
+        this.barcodeLabel = barcodeLabel;
+    }
 	
 	public String getComment()
 	{
@@ -129,6 +131,14 @@ public class FastqRecord
 			}
 			
 		return arr;
+	}
+	
+	
+	private static int RECORD_ADDED_LENGTH=10; // 4 newlines (2 characters each), @ and +
+	
+	public int getRecordLength()
+	{
+		return this.name.length()+this.sequence.length()+this.comment.length()+this.quality.length()+RECORD_ADDED_LENGTH;
 	}
 	
 	

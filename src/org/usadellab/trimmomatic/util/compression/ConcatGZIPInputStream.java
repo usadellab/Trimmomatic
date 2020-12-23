@@ -1,4 +1,4 @@
-package org.usadellab.trimmomatic.util;
+package org.usadellab.trimmomatic.util.compression;
 
 import java.io.IOException;
 import java.io.InputStream;

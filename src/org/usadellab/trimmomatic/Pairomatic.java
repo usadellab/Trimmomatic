@@ -27,7 +27,7 @@ public class Pairomatic
 		Set<String> names = new LinkedHashSet<String>();
 
 		FastqParser parser = new FastqParser(0);
-		parser.parse(file);
+		parser.open(file);
 
 		while (parser.hasNext())
 			{
@@ -87,7 +87,7 @@ public class Pairomatic
 			throws IOException
 	{
 		FastqParser parser = new FastqParser(0);
-		parser.parse(input);
+		parser.open(input);
 
 		FastqSerializer matchSerializer=new FastqSerializer();
 		matchSerializer.open(match);

@@ -66,7 +66,7 @@ public class Trimmomatic
 	/**
 	 * @param args
 	 */
-	public static void main(String[] args) throws IOException
+	public static void main(String[] args) throws Exception
 	{
 		boolean showUsage=true;
 	

@@ -1,18 +1,61 @@
 Version 0.1: Initial Release
 
-Version 0.11: Fix SE parameter passing
+Version 0.11: Fix: SE parameter passing
 
-Version 0.14: Implement support for PHRED33 quality score encoding (-phred33 or -phred64)
+Version 0.14: Feature: Implement support for PHRED33 quality score encoding (-phred33 or -phred64)
 
-Version 0.15: Add support for logging the trimming (-trimlog <logfile>)
+Version 0.15: Feature: Support for logging the trimming (-trimlog <logfile>)
 
-Version 0.17: Add support for HEADCROP task (HEADCROP:<BasesToRemove>)
+Version 0.17: Feature: Support for HEADCROP task (HEADCROP:<BasesToRemove>)
 
-Version 0.24: Bugfix for concatenated gzip files
-              Threading 
-
-Version 0.25: Support for -jar invocation
-
-Version 0.27: Support for short adapters and/or short overlaps
-              Beta of MAXINFO trimmer
+Version 0.20: Multithreading support
+              Summary trim statistics
+              Fix: Incorrect alignment score in ILLUMINACLIP
               
+Version 0.22: Feature: Support ZIP and BZIP2 format
+              Feature: Basic support for short adapters in simple mode in ILLUMINACLIP
+             
+Version 0.24: Fix: Handle concatenated gzip files
+
+Version 0.25: Feature: Support for -jar invocation. The ‘old’ method, using the explicit class, continues to work
+              Fix: Ensure input files are read only once, to allow streaming via shell
+              Fix: Report failures correctly in multi-threaded mode
+
+Version 0.27: Feature: Add support for ‘keep reverse’ and ‘minimum adapter length’ to palindrome mode in ILLUMINACLIP
+              Feature: Support for short adapters and/or short overlaps
+              Feature: Add MAXINFO trimmer
+              Performance: Improve FastQ parser and serializer
+
+Version 0.30: Feature: Add AVGQUAL trimmer
+              Fix: Correct ‘half-window’ clipping from end of reads in SLIDINGWINDOW (bug introduced in 0.27)
+              Performance: Various improvements to simple alignment in ILLUMINACLIP
+              Internal: Clean up & refactor ILLUMINACLIP implementation
+
+Version 0.32: Feature: Automatic detection of PHRED encoding
+              Feature: Automatic setting of threads based on cpu cores (up to 16)
+	      Feature: Support for template-based input and output file names
+              Fix: Add missing MANIFEST.MF file
+
+Version 0.33: Fix: Tolerate wider range of QUAL values in automatic PHRED detection
+
+Version 0.35: Feature: Only use automatic thread setting with <=8 cores, up to a maximum of 4 threads
+	      Feature: Add read pairing validator
+              Feature: Improved parameter handling and problem detection
+              Feature: Added 'quiet' mode for log messages
+	      Fix: Better error handling in parser
+              Fix: Tolerate different length input files in paired mode
+              Performance: Improve trimming using different sensitivity based on adapter length
+
+Version 0.36: Feature: More flexible HEADCROP trimmer options
+              Feature: TAILCROP trimmer
+              Feature: Show version
+              Fix: Concatenated gzip files
+
+Version 0.38: Feature: Stats summary file
+              Feature: BASECOUNT trimmer
+
+Version 0.39: Feature: More flexible HEADCROP/TAILCROP trimmer options
+
+Version 0.40: Feature: Parallel GZIP/BZIP2 compression
+
+

@@ -9,10 +9,11 @@ import java.io.OutputStreamWriter;
 import java.util.zip.GZIPOutputStream;
 
 import org.itadaki.bzip2.BZip2OutputStream;
+import org.usadellab.trimmomatic.util.compression.CompressionFormat;
 
 public class FastqSerializer {
 
-	private BufferedWriter stream;
+	private BufferedWriter writer;
 	private File inputFile;
 
 	public FastqSerializer()
@@ -20,36 +21,30 @@ public class FastqSerializer {
 
 	}
 
+	public void open(OutputStream contentStream) throws IOException
+	{
+		writer = new BufferedWriter(new OutputStreamWriter(contentStream), 32768);
+	}
+	
 	public void open(File file) throws IOException
 	{
-		String name = file.getName();
 		this.inputFile = file;
 
-		OutputStream gStream = new FileOutputStream(file);
-
-		if (name.endsWith(".gz"))
-			{
-			gStream = new GZIPOutputStream(gStream);
-			}
-		else if (name.endsWith(".bz2"))
-			{
-			gStream = new BZip2OutputStream(gStream);
-			}
-
-		// stream=new OutputStreamWriter(new BufferedOutputStream(gStream));
-
-		stream = new BufferedWriter(new OutputStreamWriter(gStream), 32768);
+		OutputStream rawStream = new FileOutputStream(file);		
+		OutputStream contentStream = CompressionFormat.wrapStreamForSerializing(rawStream, file.getName(), null);
+		
+		open(contentStream);
 	}
 
 	public void close() throws IOException
 	{
-		stream.close();
+		writer.close();
 	}
 
 	public void writeRecord(FastqRecord record) throws IOException
-	{
-		StringBuilder sb=new StringBuilder(500);
-	       
+	{	
+		StringBuilder sb=new StringBuilder(record.getRecordLength());
+			
 	    sb.append('@');
 	    sb.append(record.getName());
 	    sb.append('\n');
@@ -60,17 +55,12 @@ public class FastqSerializer {
 	    sb.append(record.getQuality());
 	    sb.append('\n');
 
-	    stream.write(sb.toString());
+	    writer.write(sb.toString());
 	}
 
 	public File getInputFile()
 	{
 		return inputFile;
-	}
-
-	public void setInputFile(File file)
-	{
-		this.inputFile = file;
 	}
 
 }
