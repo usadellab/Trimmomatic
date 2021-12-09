@@ -84,28 +84,30 @@ Most steps take one or more settings, delimited by ':' (a colon)
 
 Step options:
 
-* ILLUMINACLIP:<fastaWithAdaptersEtc>:<seed mismatches>:<palindrome clip threshold>:<simple clip threshold>
- * fastaWithAdaptersEtc: specifies the path to a fasta file containing all the adapters, PCR sequences etc. The naming of the various sequences within this file determines how they are used. See below.
- * seedMismatches: specifies the maximum mismatch count which will still allow a full match to be performed
- * palindromeClipThreshold: specifies how accurate the match between the two 'adapter ligated' reads must be for PE palindrome read alignment.
- * simpleClipThreshold: specifies how accurate the match between any adapter etc. sequence must be against a read.
+* ILLUMINACLIP:&lt;fastaWithAdaptersEtc>:&lt;seed mismatches>:&lt;palindrome clip threshold>:&lt;simple clip threshold>
+    * fastaWithAdaptersEtc: specifies the path to a fasta file containing all the adapters, PCR sequences etc. The naming of the various sequences within this file determines how they are used. See below.
+    * seedMismatches: specifies the maximum mismatch count which will still allow a full match to be performed
+    * palindromeClipThreshold: specifies how accurate the match between the two 'adapter ligated' reads must be for PE palindrome read alignment.
+    * simpleClipThreshold: specifies how accurate the match between any adapter etc. sequence must be against a read.
+ 
+* SLIDINGWINDOW:&lt;windowSize>:&lt;requiredQuality>
+    * windowSize: specifies the number of bases to average across
+    * requiredQuality: specifies the average quality required.
 
-* SLIDINGWINDOW:<windowSize>:<requiredQuality>
- * windowSize: specifies the number of bases to average across
- * requiredQuality: specifies the average quality required.
+* LEADING:&lt;quality>
+    * quality: Specifies the minimum quality required to keep a base.
 
-* LEADING:<quality>
- * quality: Specifies the minimum quality required to keep a base.
+* TRAILING:&lt;quality>
+    * quality: Specifies the minimum quality required to keep a base.
 
-* TRAILING:<quality>
-  * quality: Specifies the minimum quality required to keep a base.
+* CROP:&lt;length>
+    * length: The number of bases to keep, from the start of the read.
 
-* CROP:<length>
- * length: The number of bases to keep, from the start of the read.
-*   HEADCROP:<length>
- * length: The number of bases to remove from the start of the read.
-* MINLEN:<length>
- * length: Specifies the minimum length of reads to be kept.
+*   HEADCROP:&lt;length>
+    * length: The number of bases to remove from the start of the read.
+
+* MINLEN:&lt;length>
+    * length: Specifies the minimum length of reads to be kept.
 
 # Trimming Order
 
