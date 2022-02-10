@@ -1,5 +1,13 @@
 # Trimmomatic
 # Quick start
+## Installation
+The easiest option is to download a binary release zip, and unpack it somewhere convenient. You'll need to modify the example command lines below to reference the trimmomatic JAR file and the location of the adapter fasta files. 
+
+## Build from Source
+The current version can be built by cloning the repository, change into the top level directory and build using 'ant'.
+
+To build from a source release, download the source zip or tar.gz, unpack it, change into top level directory (Trimmomatic-x.xx), and build using 'ant'. 
+
 ## Paired End:
 
 With most new data sets you can use gentle quality trimming and adapter clipping.
