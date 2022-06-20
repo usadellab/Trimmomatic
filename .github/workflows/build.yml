@@ -22,3 +22,4 @@ jobs:
         distribution: 'zulu'
     - name: Build with Ant
       run: ant -noinput -buildfile build.xml
+      
