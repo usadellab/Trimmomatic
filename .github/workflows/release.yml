@@ -27,4 +27,4 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/')
         with:
           files: |
-            dist/Trimmomatic-[\!Src]*.zip
+            dist/Trimmomatic-*.zip
