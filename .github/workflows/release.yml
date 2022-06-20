@@ -1,4 +1,4 @@
-# Refer to https://github.com/softprops/action-gh-release
+# Refer to https://github.com/actions/upload-artifact
 
 on:
   push:
@@ -22,9 +22,10 @@ jobs:
           distribution: 'temurin'
       - name: Build with Ant
         run: ant -noinput -buildfile build.xml
-      - name: Release
-        uses: softprops/action-gh-release@v1
-        if: startsWith(github.ref, 'refs/tags/')
+      - name: Upload artifact
+        uses: actions/upload-artifact@v3
         with:
-          files: |
+          name: release artifact
+          path: |
             dist/Trimmomatic-*.zip
+            !dist/Trimmomatic-Src-*.zip
