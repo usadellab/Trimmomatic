@@ -1,4 +1,6 @@
 # Trimmomatic
+# Note 
+while the software is licensed under the GPL, the adapter sequences are *not* included in the GPL part, but owned by and used with permission of Illumina. 
 # Quick start
 ## Installation
 The easiest option is to download a binary release zip, and unpack it somewhere convenient. You'll need to modify the example command lines below to reference the trimmomatic JAR file and the location of the adapter fasta files. 
