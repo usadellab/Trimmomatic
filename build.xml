@@ -31,7 +31,7 @@
 	</target>
 
 	<target name="compile" depends="import">
-		<javac srcdir="${src}" destdir="${dist_build}" debug="true" source="1.5" target="1.5" includeantruntime="false">
+		<javac srcdir="${src}" destdir="${dist_build}" debug="true" release="11" includeantruntime="false">
 			<classpath>
 				<fileset dir="${dist_lib}">
 					<include name="*.jar" />
