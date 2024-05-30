@@ -10,33 +10,25 @@ import org.usadellab.trimmomatic.fastq.FastqParser;
 import org.usadellab.trimmomatic.fastq.FastqRecord;
 import org.usadellab.trimmomatic.fastq.FastqSerializer;
 
-public class Pairomatic
-{
+public class Pairomatic {
 
 	/**
 	 * Pairomatic: The FASTQ pair/unpairer
 	 */
 
-	public Pairomatic()
-	{
+	public Pairomatic() {}
 
-	}
-
-	private Set<String> getFastqNames(File file, Character delimiter) throws IOException
-	{
+	private Set<String> getFastqNames(File file, Character delimiter) throws IOException {
 		Set<String> names = new LinkedHashSet<String>();
 
 		FastqParser parser = new FastqParser(0);
 		parser.open(file);
 
-		while (parser.hasNext())
-			{
+		while (parser.hasNext()) {
 			FastqRecord rec = parser.next();
-
 			String name = rec.getName();
 
-			if (delimiter != null)
-				{
+			if (delimiter != null) {
 				int index = name.lastIndexOf(delimiter);
 
 				if (index == -1)
@@ -44,65 +36,50 @@ public class Pairomatic
 							+ "' in record named '" + name + "'");
 
 				name = name.substring(0, index);
-				}
+			}
 			
 			if(names.contains(name))
-				throw new RuntimeException("Error: Found "+name+" more than once in file - check delimiter is correct '"+delimiter+"'");
+				throw new RuntimeException("Error: Found " + name + " more than once in file - check delimiter is correct '" + delimiter + "'");
 			
 			names.add(name);
-			}
+		}
 
 		return names;
 	}
 
 	
-	private boolean equalOrdering(Set<String> set1, Set<String> set2)
-	{
-		if(set1.size()!=set2.size())
-			return false;
+	private boolean equalOrdering(Set<String> set1, Set<String> set2) {
+		if(set1.size() != set2.size()) return false;
 		
-		Iterator<String> iter1=set1.iterator();
-		Iterator<String> iter2=set2.iterator();
+		Iterator<String> iter1 = set1.iterator();
+		Iterator<String> iter2 = set2.iterator();
 		
-		while(iter1.hasNext() && iter2.hasNext())
-			{
-			String str1=iter1.next();
-			String str2=iter2.next();
+		while(iter1.hasNext() && iter2.hasNext()) {
+			String str1 = iter1.next();
+			String str2 = iter2.next();
 			
-			if(!str1.equals(str2))
-				return false;
-			}
-		
-		if(iter1.hasNext())
-			return false;
-		
-		if(iter2.hasNext())
-			return false;
-		
-		return true;
-	}
+			if(!str1.equals(str2)) return false;
+		}
+
+        return !iter1.hasNext() && !iter2.hasNext();
+    }
 	
 	
-	private void splitFastq(File input, File match, File unmatch, Set<String> toKeep, Character delimiter)
-			throws IOException
-	{
+	private void splitFastq(File input, File match, File unmatch, Set<String> toKeep, Character delimiter) throws IOException {
 		FastqParser parser = new FastqParser(0);
 		parser.open(input);
 
-		FastqSerializer matchSerializer=new FastqSerializer();
+		FastqSerializer matchSerializer = new FastqSerializer();
 		matchSerializer.open(match);
 		
-		FastqSerializer unmatchSerializer=new FastqSerializer();
+		FastqSerializer unmatchSerializer = new FastqSerializer();
 		unmatchSerializer.open(unmatch);
 		
-		while (parser.hasNext())
-			{
+		while (parser.hasNext()) {
 			FastqRecord rec = parser.next();
-
 			String name = rec.getName();
 
-			if (delimiter != null)
-				{
+			if (delimiter != null) {
 				int index = name.indexOf(delimiter);
 
 				if (index == -1)
@@ -110,22 +87,18 @@ public class Pairomatic
 							+ "' in record named '" + name + "'");
 
 				name = name.substring(0, index);
-				}
-			
-			if(toKeep.contains(name))
-				matchSerializer.writeRecord(rec);
-			else
-				unmatchSerializer.writeRecord(rec);
 			}
+			
+			if(toKeep.contains(name)) matchSerializer.writeRecord(rec);
+			else unmatchSerializer.writeRecord(rec);
+		}
 		
 		matchSerializer.close();
 		unmatchSerializer.close();
-
 	}
 
-	public void process(File input1, File input2, File output1P, File output1U, File output2P, File output2U,
-			Character delimiter) throws IOException
-	{
+	public void process(File input1, File input2, File output1P, File output1U,
+						File output2P, File output2U, Character delimiter) throws IOException {
 		Set<String> names1 = getFastqNames(input1, delimiter);
 		System.err.println("First input file contains " + names1.size() + " records");
 
@@ -136,11 +109,10 @@ public class Pairomatic
 		System.err.println("Files shared " + names1.size() + " records");
 		
 		names2.retainAll(names1);
-		if(!equalOrdering(names1,names2))
-			{
+		if(!equalOrdering(names1, names2)) {
 			System.err.println("Error: Common records are not in identical order, cowardly refusing to do anything");
 			return;
-			}
+		}
 		
 		System.err.println("Splitting first file");
 		splitFastq(input1, output1P, output1U, names1, delimiter);
@@ -151,38 +123,30 @@ public class Pairomatic
 		System.err.println("All done");
 	}
 
-	public static void main(String[] args) throws IOException
-	{
+	public static void main(String[] args) throws IOException {
 		int argIndex = 0;
-		Character delim=null;
-		
+		Character delim = null;
 		boolean badOption = false;
 
-		while (argIndex < args.length && args[argIndex].startsWith("-"))
-			{
+		while (argIndex < args.length && args[argIndex].startsWith("-")) {
 			String arg = args[argIndex++];
-			if(arg.equals("-delim"))
-				{
-				String delimStr=args[argIndex++];
+			if(arg.equals("-delim")) {
+				String delimStr = args[argIndex++];
 				
-				if(delimStr.length()!=1)
-					System.err.println("Delimiter must be exactly one character, got '"+delimStr+"'");
-				else
-					delim=delimStr.charAt(0);
-				}
-			else
-				{
+				if(delimStr.length()!=1) System.err.println("Delimiter must be exactly one character, got '" + delimStr + "'");
+				else delim = delimStr.charAt(0);
+			} else {
 				System.err.println("Unknown option " + arg);
 				badOption = true;
-				}
 			}
+		}
 
-		if (args.length - argIndex < 6 || badOption)
-			{
-			System.err
-					.println("Usage: Pairomatic [-delim delimChar] <inputFile1> <inputFile2> <outputFile1P> <outputFile1U> <outputFile2P> <outputFile2U>");
+		if (args.length - argIndex < 6 || badOption) {
+			System.err.println("Usage: Pairomatic [-delim delimChar] " +
+					"<inputFile1> <inputFile2> <outputFile1P> <outputFile1U> " +
+					"<outputFile2P> <outputFile2U>");
 			System.exit(1);
-			}		
+		}
 		
 		File input1 = new File(args[argIndex++]);
 		File input2 = new File(args[argIndex++]);
@@ -195,6 +159,5 @@ public class Pairomatic
 
 		Pairomatic pm = new Pairomatic();
 		pm.process(input1, input2, output1P, output1U, output2P, output2U, delim);
-	
 	}
 }
