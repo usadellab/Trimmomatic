@@ -1,5 +1,5 @@
 # Trimmomatic
-A Java-based processing and trimming tool for Illumina NGS sequencing data, developed by the Usadel lab, capable of single-end and paired-end read handling.
+A Java-based processing and trimming tool for Illumina NGS sequencing data, developed by the [Usadel lab](http://www.usadellab.org/), capable of single-end and paired-end read handling.
 # Note 
 While the software is licensed under the GPL, the adapter sequences are *not* included in the GPL part, but owned by and used with permission of Illumina. Oligonucleotide sequences © 2023 Illumina, Inc. All rights reserved.
 # Quick start
