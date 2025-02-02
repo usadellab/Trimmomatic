@@ -6,79 +6,115 @@ While the software is licensed under the GPL, the adapter sequences are *not* in
 The easiest option is to download a binary release zip, and unpack it somewhere convenient. You'll need to modify the example command lines below to reference the trimmomatic JAR file and the location of the adapter fasta files. 
 
 ## Build from Source
-The current version can be built by cloning the repository, change into the top level directory and build using 'ant'.
+The current version can be built by cloning the repository, change into the top level directory and build using `ant`.
 
-To build from a source release, download the source zip or tar.gz, unpack it, change into top level directory (Trimmomatic-x.xx), and build using 'ant'. 
+To build from a source release, download the source zip or tar.gz, unpack it, change into top level directory (`Trimmomatic-x.xx`), and build using `ant`. 
 
 ## Paired End:
 
 With most new data sets you can use gentle quality trimming and adapter clipping.
 
-You often don't need leading and traling clipping. Also in general setting the keepBothReads to True can be useful when working with paired end data, you will keep even redunfant information but this likely makes your pipelines more manageable. Note the additional :2 in front of the True (for keepBothReads) - this is the minimum adapter length in palindrome mode, you can even set this to 1. (Default is a very conservative 8)
+You often don't need leading and traling clipping. Also in general setting the `keepBothReads` to `True` can be useful when working with paired end data, you will keep even redunfant information but this likely makes your pipelines more manageable. Note the additional `:2` in front of the `True` (for `keepBothReads`) - this is the minimum adapter length in palindrome mode, you can even set this to 1. (Default is a very conservative 8)
 
 If you have questions please don't hesitate to contact us, this is not necessarily one size fits all. (e.g. RNAseq expression analysis vs DNA assembly).
 
-java -jar trimmomatic-0.39.jar PE input_forward.fq.gz input_reverse.fq.gz output_forward_paired.fq.gz output_forward_unpaired.fq.gz output_reverse_paired.fq.gz output_reverse_unpaired.fq.gz ILLUMINACLIP:TruSeq3-PE.fa:2:30:10:2:True LEADING:3 TRAILING:3 MINLEN:36
- 
+```
+java -jar trimmomatic-0.39.jar PE \
+input_forward.fq.gz input_reverse.fq.gz \
+output_forward_paired.fq.gz output_forward_unpaired.fq.gz \
+output_reverse_paired.fq.gz output_reverse_unpaired.fq.gz \
+ILLUMINACLIP:TruSeq3-PE.fa:2:30:10:2:True LEADING:3 TRAILING:3 MINLEN:36
+```
 
 for reference only (less sensitive for adapters)
 
-java -jar trimmomatic-0.35.jar PE -phred33 input_forward.fq.gz input_reverse.fq.gz output_forward_paired.fq.gz output_forward_unpaired.fq.gz output_reverse_paired.fq.gz output_reverse_unpaired.fq.gz ILLUMINACLIP:TruSeq3-PE.fa:2:30:10 LEADING:3 TRAILING:3 SLIDINGWINDOW:4:15 MINLEN:36
+```java -jar trimmomatic-0.35.jar PE -phred33 \
+input_forward.fq.gz input_reverse.fq.gz \
+output_forward_paired.fq.gz output_forward_unpaired.fq.gz \
+output_reverse_paired.fq.gz output_reverse_unpaired.fq.gz \
+ILLUMINACLIP:TruSeq3-PE.fa:2:30:10 LEADING:3 TRAILING:3 SLIDINGWINDOW:4:15 MINLEN:36
+```
 
 This will perform the following:
 
-* Remove adapters (ILLUMINACLIP:TruSeq3-PE.fa:2:30:10)
-* Remove leading low quality or N bases (below quality 3) (LEADING:3)
-* Remove trailing low quality or N bases (below quality 3) (TRAILING:3)
-* Scan the read with a 4-base wide sliding window, cutting when the average quality per base drops below 15 (SLIDINGWINDOW:4:15)
-* Drop reads below the 36 bases long (MINLEN:36)
+* Remove adapters (`ILLUMINACLIP:TruSeq3-PE.fa:2:30:10`)
+* Remove leading low quality or N bases (below quality 3) (`LEADING:3`)
+* Remove trailing low quality or N bases (below quality 3) (`TRAILING:3`)
+* Scan the read with a 4-base wide sliding window, cutting when the average quality per base drops below 15 (`SLIDINGWINDOW:4:15`)
+* Drop reads below the 36 bases long (`MINLEN:36`)
 
 ## Single End:
-
-java -jar trimmomatic-0.35.jar SE -phred33 input.fq.gz output.fq.gz ILLUMINACLIP:TruSeq3-SE:2:30:10 LEADING:3 TRAILING:3 SLIDINGWINDOW:4:15 MINLEN:36
-
-This will perform the same steps, using the single-ended adapter file
-
- 
+To perform the same steps using a single-ended adapter file, run:
+```
+java -jar trimmomatic-0.35.jar SE -phred33 \
+input.fq.gz \
+output.fq.gz \
+ILLUMINACLIP:TruSeq3-SE:2:30:10 \
+LEADING:3 TRAILING:3 SLIDINGWINDOW:4:15 MINLEN:36
+``` 
 # Description
 
 Trimmomatic performs a variety of useful trimming tasks for illumina paired-end and single ended data.The selection of trimming steps and their associated parameters are supplied on the command line.
 
 The current trimming steps are:
 
-* ILLUMINACLIP: Cut adapter and other illumina-specific sequences from the read.
-* SLIDINGWINDOW: Perform a sliding window trimming, cutting once the average quality within the window falls below a threshold.
-* LEADING: Cut bases off the start of a read, if below a threshold quality
-* TRAILING: Cut bases off the end of a read, if below a threshold quality
-* CROP: Cut the read to a specified length
-* HEADCROP: Cut the specified number of bases from the start of the read
-* MINLEN: Drop the read if it is below a specified length
-* TOPHRED33: Convert quality scores to Phred-33
-* TOPHRED64: Convert quality scores to Phred-64
+* `ILLUMINACLIP`: Cut adapter and other illumina-specific sequences from the read.
+* `SLIDINGWINDOW`: Perform a sliding window trimming, cutting once the average quality within the window falls below a threshold.
+* `LEADING`: Cut bases off the start of a read, if below a threshold quality
+* `TRAILING`: Cut bases off the end of a read, if below a threshold quality
+* `CROP`: Cut the read to a specified length
+* `HEADCROP`: Cut the specified number of bases from the start of the read
+* `MINLEN`: Drop the read if it is below a specified length
+* `TOPHRED33`: Convert quality scores to Phred-33
+* `TOPHRED64`: Convert quality scores to Phred-64
 
-It works with FASTQ (using phred + 33 or phred + 64 quality scores, depending on the Illumina pipeline used), either uncompressed or gzipp'ed FASTQ. Use of gzip format is determined based on the .gz extension.
+It works with FASTQ (using phred + 33 or phred + 64 quality scores, depending on the Illumina pipeline used), either uncompressed or gzipp'ed FASTQ. Use of gzip format is determined based on the `.gz` extension.
 
 For single-ended data, one input and one output file are specified, plus the processing steps. For paired-end data, two input files are specified, and 4 output files, 2 for the 'paired' output where both reads survived the processing, and 2 for corresponding 'unpaired' output where a read survived, but the partner read did not.
  
 # Running Trimmomatic
 
 Since version 0.27, trimmomatic can be executed using -jar. The 'old' method, using the explicit class, continues to work.
-Paired End Mode:
+## Paired End Mode:
 
-java -jar <path to trimmomatic.jar> PE [-threads <threads] [-phred33 | -phred64] [-trimlog <logFile>] <input 1> <input 2> <paired output 1> <unpaired output 1> <paired output 2> <unpaired output 2> <step 1> ...
+```
+java -jar <path to trimmomatic.jar> PE [-threads <threads] [-phred33 | -phred64] \
+[-trimlog <logFile>] \
+<input 1> <input 2> \
+<paired output 1> <unpaired output 1> \
+<paired output 2> <unpaired output 2> \
+<step 1> # Additional steps added as needed
+```
 
 or
 
-java -classpath <path to trimmomatic jar> org.usadellab.trimmomatic.TrimmomaticPE [-threads <threads>] [-phred33 | -phred64] [-trimlog <logFile>] <input 1> <input 2> <paired output 1> <unpaired output 1> <paired output 2> <unpaired output 2> <step 1> ...
-Single End Mode:
+```
+java -classpath <path to trimmomatic jar> org.usadellab.trimmomatic.TrimmomaticPE [-threads <threads>] [-phred33 | -phred64] \
+[-trimlog <logFile>] \
+<input 1> <input 2> \
+<paired output 1> <unpaired output 1> \
+<paired output 2> <unpaired output 2> \
+<step 1> # Additional steps added as needed
+```
+## Single End Mode:
 
-java -jar <path to trimmomatic jar> SE [-threads <threads>] [-phred33 | -phred64] [-trimlog <logFile>] <input> <output> <step 1> ...
+```
+java -jar <path to trimmomatic jar> SE [-threads <threads>] [-phred33 | -phred64] \
+[-trimlog <logFile>] \
+<input> <output> \
+<step 1> # Additional steps added as needed
+```
 
 or
 
-java -classpath <path to trimmomatic jar> org.usadellab.trimmomatic.TrimmomaticSE [-threads <threads>] [-phred33 | -phred64] [-trimlog <logFile>] <input> <output> <step 1> ...
+```
+java -classpath <path to trimmomatic jar> org.usadellab.trimmomatic.TrimmomaticSE [-threads <threads>] [-phred33 | -phred64] \
+[-trimlog <logFile>] \
+<input> <output> \
+<step 1> # Additional steps added as needed
+```
 
-If no quality score is specified, phred-64 is the default. This will be changed to an 'autodetected' quality score in a future version.
+Phred-64 is the default quality score if none is specified. This will be changed to an 'autodetected' quality score in a future version.
 
 Specifying a trimlog file creates a log of all read trimmings, indicating the following details:
 
@@ -90,38 +126,38 @@ Specifying a trimlog file creates a log of all read trimmings, indicating the fo
 
 Multiple steps can be specified as required, by using additional arguments at the end.
 
-Most steps take one or more settings, delimited by ':' (a colon)
+Most steps take one or more settings, delimited by `:`.
 
 Step options:
 
-* ILLUMINACLIP:&lt;fastaWithAdaptersEtc>:&lt;seed mismatches>:&lt;palindrome clip threshold>:&lt;simple clip threshold>
-    * fastaWithAdaptersEtc: specifies the path to a fasta file containing all the adapters, PCR sequences etc. The naming of the various sequences within this file determines how they are used. See below.
-    * seedMismatches: specifies the maximum mismatch count which will still allow a full match to be performed
-    * palindromeClipThreshold: specifies how accurate the match between the two 'adapter ligated' reads must be for PE palindrome read alignment.
-    * simpleClipThreshold: specifies how accurate the match between any adapter etc. sequence must be against a read.
+* `ILLUMINACLIP:&lt;fastaWithAdaptersEtc>:&lt;seed mismatches>:&lt;palindrome clip threshold>:&lt;simple clip threshold>`
+    * `fastaWithAdaptersEtc`: specifies the path to a fasta file containing all the adapters, PCR sequences etc. The naming of the various sequences within this file determines how they are used. See below.
+    * `seedMismatches`: specifies the maximum mismatch count which will still allow a full match to be performed
+    * `palindromeClipThreshold`: specifies how accurate the match between the two 'adapter ligated' reads must be for PE palindrome read alignment.
+    * `simpleClipThreshold`: specifies how accurate the match between any adapter etc. sequence must be against a read.
  
-* SLIDINGWINDOW:&lt;windowSize>:&lt;requiredQuality>
-    * windowSize: specifies the number of bases to average across
-    * requiredQuality: specifies the average quality required.
+* `SLIDINGWINDOW:&lt;windowSize>:&lt;requiredQuality>`
+    * `windowSize`: specifies the number of bases to average across
+    * `requiredQuality`: specifies the average quality required.
 
-* LEADING:&lt;quality>
-    * quality: Specifies the minimum quality required to keep a base.
+* `LEADING:&lt;quality>`
+    * `quality`: Specifies the minimum quality required to keep a base.
 
-* TRAILING:&lt;quality>
-    * quality: Specifies the minimum quality required to keep a base.
+* `TRAILING:&lt;quality>`
+    * `quality`: Specifies the minimum quality required to keep a base.
 
-* CROP:&lt;length>
-    * length: The number of bases to keep, from the start of the read.
+* `CROP:&lt;length>`
+    * `length`: The number of bases to keep, from the start of the read.
 
-*   HEADCROP:&lt;length>
-    * length: The number of bases to remove from the start of the read.
+*   `HEADCROP:&lt;length>`
+    * `length`: The number of bases to remove from the start of the read.
 
-* MINLEN:&lt;length>
-    * length: Specifies the minimum length of reads to be kept.
+* `MINLEN:&lt;length>`
+    * `length`: Specifies the minimum length of reads to be kept.
 
 # Trimming Order
 
-Trimming occurs in the order which the steps are specified on the command line. It is recommended in most cases that adapter clipping, if required, is done as early as possible.
+Trimming occurs in the order which the steps are specified on the command line. It is recommended that adapter clipping, if required, is done as early as possible in most cases.
  
 # The Adapter Fasta
 
