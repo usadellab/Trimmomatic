@@ -6,8 +6,9 @@ while the software is licensed under the GPL, the adapter sequences are *not* in
 The easiest option is to download a binary release zip, and unpack it somewhere convenient. You'll need to modify the example command lines below to reference the trimmomatic JAR file and the location of the adapter fasta files. 
 
 ## Trimmomatic is an ELIXIR Service
-ELIXIR is an intergovernmental organisation that brings together life science resources from across Europe.
 <a href="https://elixir-europe.org"><img src="https://raw.githubusercontent.com/elixir-europe/rdmkit/master/assets/img/elixir_logo_inverted.svg" width="15%"></a>
+ELIXIR is an intergovernmental organisation that brings together life science resources from across Europe.
+
 
 ## Build from Source
 The current version can be built by cloning the repository, change into the top level directory and build using 'ant'.
