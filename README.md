@@ -5,9 +5,9 @@ while the software is licensed under the GPL, the adapter sequences are *not* in
 ## Installation
 The easiest option is to download a binary release zip, and unpack it somewhere convenient. You'll need to modify the example command lines below to reference the trimmomatic JAR file and the location of the adapter fasta files. 
 
-## Trimmomatic is an ELIXIR Service
-<a href="https://elixir-europe.org"><img src="https://raw.githubusercontent.com/elixir-europe/rdmkit/master/assets/img/elixir_logo_inverted.svg" width="15%"></a>
-ELIXIR is an intergovernmental organisation that brings together life science resources from across Europe.
+## Trimmomatic is a de.NBI & ELIXIR Service
+<a href="https://denbi.de"><img src="https://www.denbi.de/templates/nbimaster/img/denbi-logo-color.svg" width="30%"></a>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="https://elixir-europe.org"><img src="https://raw.githubusercontent.com/elixir-europe/rdmkit/master/assets/img/elixir_logo_inverted.svg" width="15%"></a><br>
+This software is provided as a service by the German Network for Bioinformatics Infrastructure (de.NBI). As the German node for ELIXIR, de.NBI contributes services like this one to a pan-European infrastructure for life science data. Together, de.NBI and ELIXIR offer a coordinated portfolio of resources — including databases, software, training, and cloud computing — to make it easier for scientists in academia and industry to find and share data, exchange expertise, and establish best practices.
 
 
 ## Build from Source
