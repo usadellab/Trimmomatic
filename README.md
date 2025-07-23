@@ -60,7 +60,7 @@ LEADING:3 TRAILING:3 SLIDINGWINDOW:4:15 MINLEN:36
 ``` 
 # Description
 
-Trimmomatic performs a variety of useful trimming tasks for illumina paired-end and single ended data.The selection of trimming steps and their associated parameters are supplied on the command line.
+Trimmomatic performs a variety of useful trimming tasks for illumina paired-end and single ended data. The selection of trimming steps and their associated parameters are supplied on the command line.
 
 The current trimming steps are:
 
@@ -136,29 +136,29 @@ Most steps take one or more settings, delimited by `:`.
 
 Step options:
 
-* `ILLUMINACLIP:&lt;fastaWithAdaptersEtc>:&lt;seed mismatches>:&lt;palindrome clip threshold>:&lt;simple clip threshold>`
+* `ILLUMINACLIP:<fastaWithAdaptersEtc>:<seed mismatches>:<palindrome clip threshold>:<simple clip threshold>`
     * `fastaWithAdaptersEtc`: specifies the path to a fasta file containing all the adapters, PCR sequences etc. The naming of the various sequences within this file determines how they are used. See below.
     * `seedMismatches`: specifies the maximum mismatch count which will still allow a full match to be performed
     * `palindromeClipThreshold`: specifies how accurate the match between the two 'adapter ligated' reads must be for PE palindrome read alignment.
     * `simpleClipThreshold`: specifies how accurate the match between any adapter etc. sequence must be against a read.
  
-* `SLIDINGWINDOW:&lt;windowSize>:&lt;requiredQuality>`
+* `SLIDINGWINDOW:<windowSize>:<requiredQuality>`
     * `windowSize`: specifies the number of bases to average across
     * `requiredQuality`: specifies the average quality required.
 
-* `LEADING:&lt;quality>`
+* `LEADING:<quality>`
     * `quality`: Specifies the minimum quality required to keep a base.
 
-* `TRAILING:&lt;quality>`
+* `TRAILING:<quality>`
     * `quality`: Specifies the minimum quality required to keep a base.
 
-* `CROP:&lt;length>`
+* `CROP:<length>`
     * `length`: The number of bases to keep, from the start of the read.
 
-*   `HEADCROP:&lt;length>`
+*   `HEADCROP:<length>`
     * `length`: The number of bases to remove from the start of the read.
 
-* `MINLEN:&lt;length>`
+* `MINLEN:<length>`
     * `length`: Specifies the minimum length of reads to be kept.
 
 # Trimming Order
