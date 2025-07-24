@@ -1,0 +1,5 @@
+Manifest-Version: 1.0
+Built-By: s.beier
+Build-Jdk: 19.0.1
+Created-By: Maven Integration for Eclipse
+
