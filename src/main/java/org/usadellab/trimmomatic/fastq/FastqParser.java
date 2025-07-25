@@ -14,166 +14,152 @@ import org.usadellab.trimmomatic.util.compression.CompressionFormat;
 
 public class FastqParser {
 
-	private static final int PREREAD_COUNT=10000;
+	private static final int PREREAD_COUNT = 10000;
 
-    private int phredOffset;
-    private ArrayDeque<FastqRecord> deque;
-    int qualHistogram[];
-    
-    private PositionTrackingInputStream posTrackInputStream;
-    private BufferedReader reader;
-    private FastqRecord current;
-    
+	private int phredOffset;
+	private ArrayDeque<FastqRecord> deque;
+	int qualHistogram[];
 
-    private AtomicBoolean atEOF;
-    
-    public FastqParser(int phredOffset) {
-        this.phredOffset = phredOffset;
-        deque=new ArrayDeque<FastqRecord>(PREREAD_COUNT);
-        
-        this.atEOF=new AtomicBoolean();
-    }
+	private PositionTrackingInputStream posTrackInputStream;
+	private BufferedReader reader;
+	private FastqRecord current;
 
-    public void setPhredOffset(int phredOffset)
-    {
-    	this.phredOffset=phredOffset;
-    	
-    	if(current!=null)
-    		current.setPhredOffset(phredOffset);
-    }
-    
-    public void parseOne() throws IOException 
-    {
-        current = null;
+	private AtomicBoolean atEOF;
 
-        String name;
-        String sequence;
-        String comment;
-        String quality;
+	public FastqParser(int phredOffset) {
+		this.phredOffset = phredOffset;
+		deque = new ArrayDeque<FastqRecord>(PREREAD_COUNT);
 
-        String line;
+		this.atEOF = new AtomicBoolean();
+	}
 
-        line = reader.readLine();
-        if (line == null) {
-        	atEOF.set(true);
-            return;
-        }
-        
-        if (line.charAt(0)=='@') {
-            name = line.substring(1);
-        } else {
-            throw new RuntimeException("Invalid FASTQ name line: " + line);
-        }
+	public void setPhredOffset(int phredOffset) {
+		this.phredOffset = phredOffset;
 
-        sequence = reader.readLine();
-        if(sequence==null)
-        	throw new RuntimeException("Missing sequence line from record: " + name);
+		if (current != null)
+			current.setPhredOffset(phredOffset);
+	}
 
-        line = reader.readLine();
-        if(line==null)
-        	throw new RuntimeException("Missing comment line from record: " + name);
+	public void parseOne() throws IOException {
+		current = null;
 
-        if (line.charAt(0)=='+') {
-            comment = line.substring(1);
-        } else {
-            throw new RuntimeException("Invalid FASTQ comment line: " + line);
-        }
+		String name;
+		String sequence;
+		String comment;
+		String quality;
 
-        quality = reader.readLine();
-        if(quality==null)
-        	throw new RuntimeException("Missing quality line from record: " + name);
+		String line;
 
-        current = new FastqRecord(name, sequence, comment, quality, phredOffset);
-    }
+		line = reader.readLine();
+		if (line == null) {
+			atEOF.set(true);
+			return;
+		}
 
-    public int getProgress() {
-    	if(atEOF.get())
-    		return 100;
-    	
-    	return posTrackInputStream.getProgressPercentage();
-    }
+		if (line.charAt(0) == '@') {
+			name = line.substring(1);
+		} else {
+			throw new RuntimeException("Invalid FASTQ name line: " + line);
+		}
 
-    
-    private void accumulateHistogram(FastqRecord rec)
-    {
-    	int quals[]=rec.getQualityAsInteger(false);
-    	
-    	for(int i: quals)
-    		qualHistogram[i]++;
-    }
-    
-    public int determinePhredOffset()
-    {
-    	int phred33Total=0;
-    	int phred64Total=0;
+		sequence = reader.readLine();
+		if (sequence == null)
+			throw new RuntimeException("Missing sequence line from record: " + name);
 
-    	for(int i=33;i<=58;i++)
-    		phred33Total+=qualHistogram[i];
-    	
-    	for(int i=80;i<=104;i++)
-    		phred64Total+=qualHistogram[i];
-    	
-    	if(phred33Total==0 && phred64Total>0)
-    		return 64;
+		line = reader.readLine();
+		if (line == null)
+			throw new RuntimeException("Missing comment line from record: " + name);
 
-    	if(phred64Total==0 && phred33Total>0)
-    		return 33;
-    	
-    	return 0;
-    }
-    
-    
-    public void open(File input) throws IOException 
-    {            
-    	posTrackInputStream=new PositionTrackingInputStream(new FileInputStream(input), input.length());
-    	
-    	InputStream contentInputStream = CompressionFormat.wrapStreamForParsing(posTrackInputStream, input.getName());
-    
-        reader=new BufferedReader(new InputStreamReader(contentInputStream), 32768);
-        
-        if(phredOffset==0)
-        	{
-        	deque.clear();
-        	qualHistogram=new int[256];
-        	
-        	for(int i=0;i<PREREAD_COUNT;i++)
-        		{
-        		parseOne();
-        		if(current!=null)
-        			{
-        			deque.add(current);
-        			accumulateHistogram(current);
-        			}
-        		}
-        	}
-        parseOne();
-    }
+		if (line.charAt(0) == '+') {
+			comment = line.substring(1);
+		} else {
+			throw new RuntimeException("Invalid FASTQ comment line: " + line);
+		}
 
-    public void close() throws IOException {
-        reader.close();
-    }
+		quality = reader.readLine();
+		if (quality == null)
+			throw new RuntimeException("Missing quality line from record: " + name);
 
-    public boolean hasNext() {
-        return (!deque.isEmpty()) || (current != null);
-    }
+		current = new FastqRecord(name, sequence, comment, quality, phredOffset);
+	}
 
-    public FastqRecord next() throws IOException {
-    	if(deque.isEmpty())
-    		{
-    		FastqRecord current = this.current;
-    		parseOne();
+	public int getProgress() {
+		if (atEOF.get())
+			return 100;
 
-    		return current;
-    		}
-    	else
-    		{
-    		FastqRecord rec=deque.poll();
-    		
-    		if(rec!=null)
-    			rec.setPhredOffset(phredOffset);
-    		
-    		return rec;
-    		}
-    }
+		return posTrackInputStream.getProgressPercentage();
+	}
+
+	private void accumulateHistogram(FastqRecord rec) {
+		int quals[] = rec.getQualityAsInteger(false);
+
+		for (int i : quals)
+			qualHistogram[i]++;
+	}
+
+	public int determinePhredOffset() {
+		int phred33Total = 0;
+		int phred64Total = 0;
+
+		for (int i = 33; i <= 58; i++)
+			phred33Total += qualHistogram[i];
+
+		for (int i = 80; i <= 104; i++)
+			phred64Total += qualHistogram[i];
+
+		if (phred33Total == 0 && phred64Total > 0)
+			return 64;
+
+		if (phred64Total == 0 && phred33Total > 0)
+			return 33;
+
+		return 0;
+	}
+
+	public void open(File input) throws IOException {
+		posTrackInputStream = new PositionTrackingInputStream(new FileInputStream(input), input.length());
+
+		InputStream contentInputStream = CompressionFormat.wrapStreamForParsing(posTrackInputStream, input.getName());
+
+		reader = new BufferedReader(new InputStreamReader(contentInputStream), 32768);
+
+		if (phredOffset == 0) {
+			deque.clear();
+			qualHistogram = new int[256];
+
+			for (int i = 0; i < PREREAD_COUNT; i++) {
+				parseOne();
+				if (current != null) {
+					deque.add(current);
+					accumulateHistogram(current);
+				}
+			}
+		}
+		parseOne();
+	}
+
+	public void close() throws IOException {
+		reader.close();
+	}
+
+	public boolean hasNext() {
+		return (!deque.isEmpty()) || (current != null);
+	}
+
+	public FastqRecord next() throws IOException {
+		if (deque.isEmpty()) {
+			FastqRecord current = this.current;
+			parseOne();
+
+			return current;
+		} else {
+			FastqRecord rec = deque.poll();
+
+			if (rec != null)
+				rec.setPhredOffset(phredOffset);
+
+			return rec;
+		}
+	}
 
 }

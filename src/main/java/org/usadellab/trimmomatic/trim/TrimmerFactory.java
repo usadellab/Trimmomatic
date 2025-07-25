@@ -4,72 +4,67 @@ import java.io.IOException;
 
 import org.usadellab.trimmomatic.util.Logger;
 
-
-public class TrimmerFactory
-{
+public class TrimmerFactory {
 	Logger logger;
-	
-	public TrimmerFactory(Logger logger)
-	{
-		this.logger=logger;
+
+	public TrimmerFactory(Logger logger) {
+		this.logger = logger;
 	}
-	
-	public Trimmer makeTrimmer(String desc) throws IOException
-	{
-		String trimmerName=desc;
-		String args="";
 
-		int idx=desc.indexOf(':');
+	public Trimmer makeTrimmer(String desc) throws IOException {
+		String trimmerName = desc;
+		String args = "";
 
-		if(idx>0)
-			{
-			trimmerName=desc.substring(0,idx);
-			if(idx<desc.length()-1)
-				args=desc.substring(idx+1);
-			}
+		int idx = desc.indexOf(':');
 
-		if(trimmerName.equals("ILLUMINACLIP"))
+		if (idx > 0) {
+			trimmerName = desc.substring(0, idx);
+			if (idx < desc.length() - 1)
+				args = desc.substring(idx + 1);
+		}
+
+		if (trimmerName.equals("ILLUMINACLIP"))
 			return IlluminaClippingTrimmer.makeIlluminaClippingTrimmer(logger, args);
-		
-		if(trimmerName.equals("LEADING"))
+
+		if (trimmerName.equals("LEADING"))
 			return new LeadingTrimmer(args);
-	
-		if(trimmerName.equals("TRAILING"))
+
+		if (trimmerName.equals("TRAILING"))
 			return new TrailingTrimmer(args);
-	
-		if(trimmerName.equals("HEADCROP"))
+
+		if (trimmerName.equals("HEADCROP"))
 			return new HeadCropTrimmer(args);
 
-		if(trimmerName.equals("TAILCROP"))
+		if (trimmerName.equals("TAILCROP"))
 			return new TailCropTrimmer(args);
-		
-		if(trimmerName.equals("CROP"))
+
+		if (trimmerName.equals("CROP"))
 			return new CropTrimmer(args);
 
-		if(trimmerName.equals("SLIDINGWINDOW"))
+		if (trimmerName.equals("SLIDINGWINDOW"))
 			return new SlidingWindowTrimmer(args);
 
-		if(trimmerName.equals("MAXINFO"))
+		if (trimmerName.equals("MAXINFO"))
 			return new MaximumInformationTrimmer(args);
-		
-		if(trimmerName.equals("MINLEN"))
+
+		if (trimmerName.equals("MINLEN"))
 			return new MinLenTrimmer(args);
 
-		if(trimmerName.equals("MAXLEN"))
+		if (trimmerName.equals("MAXLEN"))
 			return new MaxLenTrimmer(args);
-		
-		if(trimmerName.equals("AVGQUAL"))
+
+		if (trimmerName.equals("AVGQUAL"))
 			return new AvgQualTrimmer(args);
 
-		if(trimmerName.equals("BASECOUNT"))
+		if (trimmerName.equals("BASECOUNT"))
 			return new BaseCountTrimmer(args);
-		
-		if(trimmerName.equals("TOPHRED33"))
+
+		if (trimmerName.equals("TOPHRED33"))
 			return new ToPhred33Trimmer(args);
 
-		if(trimmerName.equals("TOPHRED64"))
+		if (trimmerName.equals("TOPHRED64"))
 			return new ToPhred64Trimmer(args);
 
-		throw new RuntimeException("Unknown trimmer: "+trimmerName);
+		throw new RuntimeException("Unknown trimmer: " + trimmerName);
 	}
 }

@@ -37,46 +37,43 @@ Also allow for SRA padding:
 // CASAVA_13("[@ ]([^:]*:[0-9]*:[0-9]*:[0-9]*:[0-9]*#[0-9]*)/[12]","$1"), // HWUSI-EAS100R:6:73:941:1973#0/1 
 // SRR001666.1 071112_SLXA-EAS1_s_7:5:1:817:345 length=36
 
-public enum RecordNamePattern
-{
-	CASAVA_13("(.* )?([^:]+:[0-9]+:[0-9]+:[0-9]+:[0-9]+#[A-Z0-9]+).*","$2"), // HWUSI-EAS100R:6:73:941:1973#0/1 -> HWUSI-EAS100R:6:73:941:1973 or HWUSI-EAS100R:6:73:941:1973#NNNN/1 
-	CASAVA_18("(.* )?([^:]+:[0-9]+:[A-Z0-9]+:[0-9]+:[0-9]+:[0-9]+:[0-9]+).*","$2");  // EAS139:136:FC706VJ:2:2104:15343:197393 1:Y:18:ATCACG
-	
+public enum RecordNamePattern {
+	CASAVA_13("(.* )?([^:]+:[0-9]+:[0-9]+:[0-9]+:[0-9]+#[A-Z0-9]+).*", "$2"), // HWUSI-EAS100R:6:73:941:1973#0/1 ->
+																				// HWUSI-EAS100R:6:73:941:1973 or
+																				// HWUSI-EAS100R:6:73:941:1973#NNNN/1
+	CASAVA_18("(.* )?([^:]+:[0-9]+:[A-Z0-9]+:[0-9]+:[0-9]+:[0-9]+:[0-9]+).*", "$2"); // EAS139:136:FC706VJ:2:2104:15343:197393
+																						// 1:Y:18:ATCACG
+
 	private Pattern pattern;
 	private String replacement;
-	
-	RecordNamePattern(String patternStr, String replacement)
-	{
-		this.pattern=Pattern.compile(patternStr);
-		this.replacement=replacement;
+
+	RecordNamePattern(String patternStr, String replacement) {
+		this.pattern = Pattern.compile(patternStr);
+		this.replacement = replacement;
 	}
-	
-	public boolean match(String str)
-	{
+
+	public boolean match(String str) {
 		return pattern.matcher(str).find();
 	}
-	
-	public String canonicalizeOne(String str)
-	{
-		Matcher matcher=pattern.matcher(str);
-		if(!matcher.find())
-			return null;
-		
-		return matcher.replaceAll(replacement);
-			
-	}
-	
-	public static String canonicalize(String str)
-	{
-		for(RecordNamePattern fnp: RecordNamePattern.values())
-		{
-			String canon=fnp.canonicalizeOne(str);
 
-			if(canon!=null)
+	public String canonicalizeOne(String str) {
+		Matcher matcher = pattern.matcher(str);
+		if (!matcher.find())
+			return null;
+
+		return matcher.replaceAll(replacement);
+
+	}
+
+	public static String canonicalize(String str) {
+		for (RecordNamePattern fnp : RecordNamePattern.values()) {
+			String canon = fnp.canonicalizeOne(str);
+
+			if (canon != null)
 				return canon;
 		}
-	
+
 		return null;
 	}
-	
+
 }

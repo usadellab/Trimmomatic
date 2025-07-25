@@ -3,40 +3,38 @@
  */
 package org.usadellab.trimmomatic.threading.trimlog;
 
-public class TrimLogRecord
-{
+public class TrimLogRecord {
 	private String readName;
 	private int length;
 	private int startPos;
 	private int endPos;
 	private int trimTail;
-	
-	public TrimLogRecord(String readName, int length, int startPos, int endPos, int trimTail)
-	{
+
+	public TrimLogRecord(String readName, int length, int startPos, int endPos, int trimTail) {
 		this.readName = readName;
 		this.length = length;
 		this.startPos = startPos;
 		this.endPos = endPos;
 		this.trimTail = trimTail;
 	}
-	public String getReadName()
-	{
+
+	public String getReadName() {
 		return readName;
 	}
-	public int getLength()
-	{
+
+	public int getLength() {
 		return length;
 	}
-	public int getStartPos()
-	{
+
+	public int getStartPos() {
 		return startPos;
 	}
-	public int getEndPos()
-	{
+
+	public int getEndPos() {
 		return endPos;
 	}
-	public int getTrimTail()
-	{
+
+	public int getTrimTail() {
 		return trimTail;
 	}
 }

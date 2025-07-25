@@ -7,38 +7,33 @@ import org.usadellab.trimmomatic.TrimStats;
 import org.usadellab.trimmomatic.threading.BlockOfRecords;
 import org.usadellab.trimmomatic.threading.ExceptionHolder;
 
-
-public abstract class TrimStatsCollector
-{
-	public static TrimStatsCollector makeTrimStatsCollector(boolean useWorker, int threads, ExceptionHolder exceptionHolder)
-	{
+public abstract class TrimStatsCollector {
+	public static TrimStatsCollector makeTrimStatsCollector(boolean useWorker, int threads,
+			ExceptionHolder exceptionHolder) {
 		if (useWorker)
 			return new SelfThreadedTrimStatsCollector(threads, exceptionHolder);
-		else 
+		else
 			return new ParasiteTrimStatsCollector();
 	}
 
 	private AtomicBoolean complete;
-	
-	TrimStatsCollector()
-	{
-		this.complete=new AtomicBoolean();
+
+	TrimStatsCollector() {
+		this.complete = new AtomicBoolean();
 	}
-	
-	public boolean isComplete()
-	{
+
+	public boolean isComplete() {
 		return complete.get();
 	}
-	
-	protected void setCompleted()
-	{
+
+	protected void setCompleted() {
 		complete.set(true);
 	}
-	
+
 	public abstract void put(Future<BlockOfRecords> future) throws Exception;
 
 	public abstract void close() throws Exception;
-	
+
 	public abstract TrimStats getStats();
-	
+
 }

@@ -6,20 +6,16 @@ import java.util.List;
 import org.usadellab.trimmomatic.fastq.FastqParser;
 import org.usadellab.trimmomatic.fastq.FastqRecord;
 
-public class ParasiteSerialParser extends Parser
-{
-	public ParasiteSerialParser(FastqParser parser)
-	{
-		super(parser);	
+public class ParasiteSerialParser extends Parser {
+	public ParasiteSerialParser(FastqParser parser) {
+		super(parser);
 	}
-	
-	public List<FastqRecord> poll() throws Exception
-	{
+
+	public List<FastqRecord> poll() throws Exception {
 		if (isComplete())
 			return new ArrayList<FastqRecord>();
-		
+
 		return parseBlock();
 	}
-	
 
 }
