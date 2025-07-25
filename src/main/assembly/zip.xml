@@ -5,7 +5,7 @@
     <formats>
         <format>zip</format>
     </formats>
-    <includeBaseDirectory>true</includeBaseDirectory>
+    <includeBaseDirectory>false</includeBaseDirectory>
     <baseDirectory>Trimmomatic-${project.version}</baseDirectory>
     <fileSets>
         <fileSet>
