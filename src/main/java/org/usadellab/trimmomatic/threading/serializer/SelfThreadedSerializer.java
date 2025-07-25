@@ -2,11 +2,7 @@ package org.usadellab.trimmomatic.threading.serializer;
 
 import java.io.IOException;
 import java.io.OutputStream;
-import java.util.concurrent.ArrayBlockingQueue;
-import java.util.concurrent.Future;
-import java.util.concurrent.atomic.AtomicBoolean;
 
-import org.usadellab.trimmomatic.util.compression.ParallelCompressor;
 import org.usadellab.trimmomatic.threading.ExceptionHolder;
 import org.usadellab.trimmomatic.util.compression.BlockData;
 

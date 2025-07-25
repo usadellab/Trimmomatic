@@ -1,10 +1,8 @@
 package org.usadellab.trimmomatic.threading.trimlog;
 
-import java.io.IOException;
 import java.io.PrintStream;
 import java.util.List;
 import java.util.concurrent.Future;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.usadellab.trimmomatic.threading.BlockOfRecords;
 

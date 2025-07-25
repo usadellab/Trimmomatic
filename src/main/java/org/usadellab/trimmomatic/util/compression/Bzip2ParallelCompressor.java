@@ -22,6 +22,7 @@ public class Bzip2ParallelCompressor implements ParallelCompressor
 	private static final int TRAILER_MAGIC_1 = 0x177245;
 	private static final int TRAILER_MAGIC_2 = 0x385090;
 	
+	@SuppressWarnings("unused")
 	private Logger logger;	
 	private int compressLevel;
 	private int block_size;
@@ -30,7 +31,7 @@ public class Bzip2ParallelCompressor implements ParallelCompressor
 	
 	public Bzip2ParallelCompressor(Logger logger, Integer compressLevel)
 	{
-		this.logger=logger;
+		this.logger = logger;
 		this.compressLevel = compressLevel==null ? DEFAULT_COMPRESSION_LEVEL : compressLevel;
 		this.block_size = this.compressLevel * BLOCK_SIZE_MULTIPLER;
 				

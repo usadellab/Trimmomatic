@@ -8,12 +8,9 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.ArrayDeque;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.zip.ZipInputStream;
 
-import org.itadaki.bzip2.BZip2InputStream;
 import org.usadellab.trimmomatic.util.PositionTrackingInputStream;
 import org.usadellab.trimmomatic.util.compression.CompressionFormat;
-import org.usadellab.trimmomatic.util.compression.ConcatGZIPInputStream;
 
 public class FastqParser {
 

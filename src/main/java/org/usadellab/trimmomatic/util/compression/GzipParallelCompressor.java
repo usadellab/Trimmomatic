@@ -1,13 +1,13 @@
 package org.usadellab.trimmomatic.util.compression;
 
 import java.io.ByteArrayOutputStream;
-import java.io.FilterOutputStream;
+//import java.io.FilterOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.util.zip.CRC32;
 import java.util.zip.Deflater;
-import java.util.zip.DeflaterOutputStream;
-import java.util.zip.GZIPOutputStream;
+//import java.util.zip.DeflaterOutputStream;
+//import java.util.zip.GZIPOutputStream;
 
 import org.usadellab.trimmomatic.util.Logger;
 
@@ -16,6 +16,7 @@ public class GzipParallelCompressor implements ParallelCompressor
 	private static final byte GZIP_MAGIC_HIGH = (byte)0x8b;
 	private static final byte GZIP_MAGIC_LOW = (byte)0x1f;
 
+	@SuppressWarnings("unused")
 	private Logger logger;
 	private int compressLevel;
 	

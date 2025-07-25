@@ -2,7 +2,6 @@ package org.usadellab.trimmomatic.fastq;
 
 import java.util.Collection;
 import java.util.Iterator;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.usadellab.trimmomatic.util.Logger;
 

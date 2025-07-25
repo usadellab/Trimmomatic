@@ -40,7 +40,7 @@ public class BlockOfWork implements Callable<BlockOfRecords>
 		
 		blocks = new ArrayList<SerializedBlock>();
 		
-		for (Serializer serializer: serializers)
+		for (@SuppressWarnings("unused") Serializer serializer: serializers)
 			{
 			blocks.add(new SerializedBlock(last));
 			}

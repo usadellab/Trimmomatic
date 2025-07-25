@@ -6,9 +6,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
-import java.util.zip.GZIPOutputStream;
 
-import org.itadaki.bzip2.BZip2OutputStream;
 import org.usadellab.trimmomatic.util.compression.CompressionFormat;
 
 public class FastqSerializer {

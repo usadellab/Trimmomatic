@@ -4,7 +4,6 @@ import java.util.concurrent.Future;
 
 import org.usadellab.trimmomatic.threading.BlockOfRecords;
 import org.usadellab.trimmomatic.threading.BlockOfWork;
-import org.usadellab.trimmomatic.threading.ExceptionHolder;
 
 public class ParasiteSerialPipeline extends Pipeline
 {

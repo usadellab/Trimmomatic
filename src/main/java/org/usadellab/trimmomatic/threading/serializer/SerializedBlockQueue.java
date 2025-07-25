@@ -1,13 +1,11 @@
 package org.usadellab.trimmomatic.threading.serializer;
 
 import java.util.concurrent.ArrayBlockingQueue;
-import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
 import org.usadellab.trimmomatic.util.compression.ParallelCompressor;
 import org.usadellab.trimmomatic.threading.ExceptionHolder;
 import org.usadellab.trimmomatic.util.compression.BlockData;
-import org.usadellab.trimmomatic.util.compression.GzipBlockData;
 import org.usadellab.trimmomatic.util.compression.UncompressedBlockData;
 
 public class SerializedBlockQueue

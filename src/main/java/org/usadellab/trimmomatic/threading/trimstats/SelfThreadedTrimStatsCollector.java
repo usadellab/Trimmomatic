@@ -1,10 +1,8 @@
 package org.usadellab.trimmomatic.threading.trimstats;
 
-import java.io.IOException;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.usadellab.trimmomatic.TrimStats;
 import org.usadellab.trimmomatic.threading.BlockOfRecords;

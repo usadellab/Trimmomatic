@@ -8,7 +8,6 @@ import java.util.concurrent.TimeoutException;
 
 import org.usadellab.trimmomatic.TrimStats;
 import org.usadellab.trimmomatic.fastq.FastqRecord;
-import org.usadellab.trimmomatic.threading.serializer.SerializedBlock;
 import org.usadellab.trimmomatic.threading.trimlog.TrimLogRecord;
 
 public class BlockOfRecords implements Future<BlockOfRecords>

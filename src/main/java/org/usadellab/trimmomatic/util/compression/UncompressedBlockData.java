@@ -6,7 +6,7 @@ import java.util.List;
 
 import org.usadellab.trimmomatic.fastq.FastqRecord;
 import org.usadellab.trimmomatic.fastq.FastqSerializer;
-import org.usadellab.trimmomatic.threading.parser.Parser;
+//import org.usadellab.trimmomatic.threading.parser.Parser;
 
 public class UncompressedBlockData implements BlockData
 {
