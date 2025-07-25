@@ -12,9 +12,14 @@ This software is provided as a service by the German Network for Bioinformatics 
 
 
 ## Build from Source
-The current version can be built by cloning the repository, change into the top level directory and build using `ant`.
 
-To build from a source release, download the source zip or tar.gz, unpack it, change into top level directory (`Trimmomatic-x.xx`), and build using `ant`. 
+To build Trimmomatic from source, you will need a Java Development Kit (JDK 8 or higher) and Apache Maven.
+
+Clone the repository, change into the top-level directory, and build using the following Maven command:
+
+```bash
+mvn clean package
+```
 
 ## Paired End:
 
