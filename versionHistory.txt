@@ -57,5 +57,9 @@ Version 0.38: Feature: Stats summary file
 Version 0.39: Feature: More flexible HEADCROP/TAILCROP trimmer options
 
 Version 0.40: Feature: Parallel GZIP/BZIP2 compression
+              Feature: Added Maven package management
+              Feature: Added modern CI routines
+              Feature: Added first JUnit tests
+              Feature: Moved to Java 8
 
 
