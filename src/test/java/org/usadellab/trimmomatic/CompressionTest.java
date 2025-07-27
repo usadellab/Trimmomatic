@@ -15,7 +15,6 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.usadellab.trimmomatic.fastq.FastqRecord;
-import org.usadellab.trimmomatic.util.Logger;
 import org.usadellab.trimmomatic.util.compression.BlockData;
 import org.usadellab.trimmomatic.util.compression.BlockOutputStream;
 import org.usadellab.trimmomatic.util.compression.CompressionFormat;
