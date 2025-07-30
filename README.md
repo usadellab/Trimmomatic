@@ -70,14 +70,19 @@ Trimmomatic performs a variety of useful trimming tasks for illumina paired-end 
 The current trimming steps are:
 
 * `ILLUMINACLIP`: Cut adapter and other illumina-specific sequences from the read.
+* `LEADING`: Cut bases off the start of a read, if below a threshold quality.
+* `TRAILING`: Cut bases off the end of a read, if below a threshold quality.
+* `HEADCROP`: Cut the specified number of bases from the start of the read.
+* `TAILCROP`: Cut the specified number of bases from the end of the read.
+* `CROP`: Cut the read to a specified length.
 * `SLIDINGWINDOW`: Perform a sliding window trimming, cutting once the average quality within the window falls below a threshold.
-* `LEADING`: Cut bases off the start of a read, if below a threshold quality
-* `TRAILING`: Cut bases off the end of a read, if below a threshold quality
-* `CROP`: Cut the read to a specified length
-* `HEADCROP`: Cut the specified number of bases from the start of the read
-* `MINLEN`: Drop the read if it is below a specified length
-* `TOPHRED33`: Convert quality scores to Phred-33
-* `TOPHRED64`: Convert quality scores to Phred-64
+* `MAXINFO`: Trim the read to maximize the useful information, balancing for read length and quality.
+* `MINLEN`: Drop the read if it is below a specified length.
+* `MAXLEN`: Drop the read if it is longer than a specified length.
+* `AVGQUAL`: Drop the read if its average quality is below a specified threshold.
+* `BASECOUNT`: Drop the read if the count of a specified base (or bases) is outside a given minimum and maximum.
+* `TOPHRED33`: Convert quality scores to Phred-33.
+* `TOPHRED64`: Convert quality scores to Phred-64.
 
 It works with FASTQ (using phred + 33 or phred + 64 quality scores, depending on the Illumina pipeline used), either uncompressed or gzipp'ed FASTQ. Use of gzip format is determined based on the `.gz` extension.
 
@@ -129,7 +134,7 @@ java -classpath <path to trimmomatic jar> org.usadellab.trimmomatic.TrimmomaticS
 
 **Note**: Compression method is inferred from output file suffixes (`.gz`, `.bz2`, `.zip`).
 
-#Optional parameters:
+## Optional parameters:
 
 * `-threads <threads>`: specifies the number of CPU threads to use for multi-threading [default = 0]. If set to 0, Trimmomatic will try to calculate the number of available threads and run with that.
 * `-phred33` | `-phred64`: specifies the quality score encoding. `phred33` is the standard for modern Illumina data.
@@ -143,7 +148,7 @@ java -classpath <path to trimmomatic jar> org.usadellab.trimmomatic.TrimmomaticS
 * `-quiet`: suppresses progress output to the console.
 * `-version`: prints the Trimmomatic version number to the console.
 
-#Step options:
+## Step options:
 
 Multiple steps can be specified as required, by using additional arguments at the end.
 
@@ -194,9 +199,9 @@ Most steps take one or more settings, delimited by `:`.
     * `minCount`: (optional) the minimum number of times the `bases` must appear for the read to be kept.
     * `maxCount`: (optional) the maximum number of times the `bases` are allowed to appear.
     
-* `TOPHRED33`: converts Phred-64 encoded records to Phred-33.
+* `TOPHRED33`
 
-* `TOPHRED64`: converts Phred-33 encoded records to Phred-64.
+* `TOPHRED64`
     
 
 # Step Order
