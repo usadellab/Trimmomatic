@@ -39,7 +39,8 @@ ILLUMINACLIP:TruSeq3-PE.fa:2:30:10:2:True LEADING:3 TRAILING:3 MINLEN:36
 
 for reference only (less sensitive for adapters)
 
-```java -jar trimmomatic-0.35.jar PE -phred33 \
+```
+java -jar trimmomatic-0.39.jar PE \
 input_forward.fq.gz input_reverse.fq.gz \
 output_forward_paired.fq.gz output_forward_unpaired.fq.gz \
 output_reverse_paired.fq.gz output_reverse_unpaired.fq.gz \
@@ -57,7 +58,7 @@ This will perform the following:
 ## Single End:
 To perform the same steps using a single-ended adapter file, run:
 ```
-java -jar trimmomatic-0.35.jar SE -phred33 \
+java -jar trimmomatic-0.39.jar SE \
 input.fq.gz \
 output.fq.gz \
 ILLUMINACLIP:TruSeq3-SE:2:30:10 \
