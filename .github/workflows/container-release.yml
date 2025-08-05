@@ -3,7 +3,7 @@ name: Build and Publish Container Release
 on:
   push:
     tags:
-      - 'v0.*' # Triggers on tags like 0.39, 0.40 etc.
+      - 'v*.*'
 
 jobs:
   build-and-publish:
@@ -38,7 +38,6 @@ jobs:
 
       - name: Extract version from tag
         id: get_version
-        # Removes 'refs/tags/' prefix to get the clean version number
         run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
 
       - name: Build and push Docker image
