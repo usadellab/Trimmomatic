@@ -145,7 +145,7 @@ java -classpath <path to trimmomatic jar> org.usadellab.trimmomatic.TrimmomaticS
 * `-summary <summaryFile>`: writes a summary of trimming results to a file.
 * `-basein <templateInputFile>`: path to one of the **paired-end** input files; its mate is auto-detected.
 * `-baseout <templateOutputFile>`: template path used to generate the four **paired-end** output files (using the `_1P`, `_1U`, `_2P`, `_2U` suffixes).
-* `-validatePairs`: performs an extra validation step on **paired-end** reads before trimming to ensure read pairs are consistent.
+* `-validatePairs`: performs an extra validation step on **paired-end** reads after trimming to ensure read pairs are consistent.
 * `-compressLevel <level>`: sets the compression level for BZIP2/GZ output files (1=fastest, 9=best compression).
 * `-compressStream` | `compressBlock`: specifies the compression mode. Block compression is the default.
 * `-quiet`: suppresses progress output to the console.
