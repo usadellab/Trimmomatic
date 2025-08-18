@@ -62,6 +62,38 @@
                 <version>3.8.1</version>
             </plugin>
             <plugin>
+    			<groupId>org.apache.maven.plugins</groupId>
+    			<artifactId>maven-jar-plugin</artifactId>
+    			<version>3.3.0</version>
+    			<configuration>
+        			<archive>
+            			<manifest>
+                			<mainClass>org.usadellab.trimmomatic.Trimmomatic</mainClass>
+            			</manifest>
+        			</archive>
+    			</configuration>
+			</plugin>
+			<plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-shade-plugin</artifactId>
+                <version>3.5.2</version>
+                <executions>
+                    <execution>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>shade</goal>
+                        </goals>
+                        <configuration>
+                            <transformers>
+                                <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
+                                    <mainClass>org.usadellab.trimmomatic.Trimmomatic</mainClass>
+                                </transformer>
+                            </transformers>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-assembly-plugin</artifactId>
                 <version>3.7.1</version>
@@ -82,18 +114,6 @@
                     </execution>
                 </executions>
             </plugin>
-            <plugin>
-    			<groupId>org.apache.maven.plugins</groupId>
-    			<artifactId>maven-jar-plugin</artifactId>
-    			<version>3.3.0</version>
-    			<configuration>
-        			<archive>
-            			<manifest>
-                			<mainClass>org.usadellab.trimmomatic.Trimmomatic</mainClass>
-            			</manifest>
-        			</archive>
-    			</configuration>
-			</plugin>
         </plugins>
     </build>
 </project>
