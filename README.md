@@ -27,7 +27,7 @@ mvn clean package
 
 With most new data sets you can use gentle quality trimming and adapter clipping.
 
-You often don't need leading and traling clipping. Also in general setting the `keepBothReads` to `True` can be useful when working with paired end data, you will keep even redunfant information but this likely makes your pipelines more manageable. Note the additional `:2` in front of the `True` (for `keepBothReads`) - this is the minimum adapter length in palindrome mode, you can even set this to 1. (Default is a very conservative 8)
+You often don't need leading and traling clipping. Also in general setting the `keepBothReads` to `True` can be useful when working with paired end data, you will keep even redundant information but this likely makes your pipelines more manageable. Note the additional `:2` in front of the `True` (for `keepBothReads`) - this is the minimum adapter length in palindrome mode, you can even set this to 1. (Default is a very conservative 8)
 
 If you have questions please don't hesitate to contact us, this is not necessarily one size fits all. (e.g. RNAseq expression analysis vs DNA assembly).
 

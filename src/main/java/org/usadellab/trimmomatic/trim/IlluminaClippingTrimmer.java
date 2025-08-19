@@ -52,7 +52,7 @@ public class IlluminaClippingTrimmer implements Trimmer {
 		int minPalindromeLikelihood = Integer.parseInt(arg[2]);
 		int minSequenceLikelihood = Integer.parseInt(arg[3]);
 
-		int minPrefix = 1;
+		int minPrefix = 8;
 		boolean palindromeKeepBoth = false;
 
 		if (arg.length > 4)
