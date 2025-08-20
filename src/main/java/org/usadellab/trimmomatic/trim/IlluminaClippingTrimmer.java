@@ -47,35 +47,45 @@ public class IlluminaClippingTrimmer implements Trimmer {
 		String arg[] = args.split(":");
 
         String fastaPath = arg[0];
-        File fastaFile = new File(fastaPath);
+        File fastaFile = null;
 
-        // New logic to find the adapter file
-        if (!fastaFile.exists()) 
-        {
-            try 
-            {
-                // Find the path of the running JAR file
+        // An absolute path provided by the user should always take precedence.
+        File potentialFile = new File(fastaPath);
+        if (potentialFile.isAbsolute()) {
+            if (potentialFile.exists()) {
+                fastaFile = potentialFile;
+                logger.infoln("ILLUMINACLIP: Using adapter file from user-specified absolute path: " + fastaFile.getAbsolutePath());
+            }
+        }
+
+        // If no absolute path was found, begin the search for a relative path.
+        if (fastaFile == null) {
+            // 1. First, try to find the file in the default 'adapters' directory next to the JAR.
+            try {
                 File jarPath = new File(IlluminaClippingTrimmer.class.getProtectionDomain().getCodeSource().getLocation().toURI());
                 File adapterDir = new File(jarPath.getParentFile(), "adapters");
                 File adapterPath = new File(adapterDir, fastaPath);
-
-                if (adapterPath.exists()) 
-                {
+                if (adapterPath.exists()) {
                     fastaFile = adapterPath;
                     logger.infoln("ILLUMINACLIP: Using adapter file from Trimmomatic installation folder: " + fastaFile.getAbsolutePath());
                 }
-            } 
-            catch (Exception e) 
-            {
-                // Could not resolve JAR path, proceed with original path and let it fail if not found
-                logger.warnln("Could not determine Trimmomatic installation path, searching for adapter file in current directory.");
+            } catch (Exception e) {
+                logger.warnln("Could not determine Trimmomatic installation path.");
             }
         }
-        
-        // Throw an error if the file is still not found
-        if (!fastaFile.exists())
-        {
-            throw new IOException("Unable to open adapter sequence file " + fastaFile.getAbsolutePath());
+
+        // 2. If not found in the default adapters directory, check the current working directory.
+        if (fastaFile == null) {
+            File cwdFile = new File(System.getProperty("user.dir"), fastaPath);
+            if (cwdFile.exists()) {
+                fastaFile = cwdFile;
+                logger.infoln("ILLUMINACLIP: Using adapter file from current working directory: " + fastaFile.getAbsolutePath());
+            }
+        }
+
+        // 3. If the file is still not found after all checks, throw an error.
+        if (fastaFile == null || !fastaFile.exists()) {
+            throw new IOException("Unable to open adapter sequence file. Searched in user-provided path, Trimmomatic adapters folder, and current working directory: " + fastaPath);
         }
 
 		int seedMaxMiss = Integer.parseInt(arg[1]);
