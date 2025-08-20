@@ -38,7 +38,10 @@ jobs:
 
       - name: Extract version from tag
         id: get_version
-        run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+        run: |
+          VERSION_TAG=${GITHUB_REF#refs/tags/}
+          echo "TAG=${VERSION_TAG}" >> $GITHUB_OUTPUT
+          echo "VERSION=${VERSION_TAG#v}" >> $GITHUB_OUTPUT
 
       - name: Set repository name to lowercase
         id: repo_lowercase
@@ -50,6 +53,6 @@ jobs:
           context: .
           file: ./Dockerfile
           push: true
-          tags: ghcr.io/${{ steps.repo_lowercase.outputs.NAME }}:${{ steps.get_version.outputs.VERSION }}
+          tags: ghcr.io/${{ steps.repo_lowercase.outputs.NAME }}:${{ steps.get_version.outputs.TAG }}
           build-args: |
             TRIMMOMATIC_VERSION=${{ steps.get_version.outputs.VERSION }}
