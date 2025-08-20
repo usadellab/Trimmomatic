@@ -46,6 +46,6 @@ jobs:
           context: .
           file: ./Dockerfile
           push: true
-          tags: ghcr.io/${{ github.repository }}:${{ steps.get_version.outputs.VERSION }}
+          tags: ghcr.io/${{ github.repository,, }}:${{ steps.get_version.outputs.VERSION }}
           build-args: |
             TRIMMOMATIC_VERSION=${{ steps.get_version.outputs.VERSION }}
