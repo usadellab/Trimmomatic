@@ -46,7 +46,37 @@ public class IlluminaClippingTrimmer implements Trimmer {
 	public static IlluminaClippingTrimmer makeIlluminaClippingTrimmer(Logger logger, String args) throws IOException {
 		String arg[] = args.split(":");
 
-		File seqs = new File(arg[0]);
+        String fastaPath = arg[0];
+        File fastaFile = new File(fastaPath);
+
+        // New logic to find the adapter file
+        if (!fastaFile.exists()) 
+        {
+            try 
+            {
+                // Find the path of the running JAR file
+                File jarPath = new File(IlluminaClippingTrimmer.class.getProtectionDomain().getCodeSource().getLocation().toURI());
+                File adapterDir = new File(jarPath.getParentFile(), "adapters");
+                File adapterPath = new File(adapterDir, fastaPath);
+
+                if (adapterPath.exists()) 
+                {
+                    fastaFile = adapterPath;
+                    logger.infoln("ILLUMINACLIP: Using adapter file from Trimmomatic installation folder: " + fastaFile.getAbsolutePath());
+                }
+            } 
+            catch (Exception e) 
+            {
+                // Could not resolve JAR path, proceed with original path and let it fail if not found
+                logger.warnln("Could not determine Trimmomatic installation path, searching for adapter file in current directory.");
+            }
+        }
+        
+        // Throw an error if the file is still not found
+        if (!fastaFile.exists())
+        {
+            throw new IOException("Unable to open adapter sequence file " + fastaFile.getAbsolutePath());
+        }
 
 		int seedMaxMiss = Integer.parseInt(arg[1]);
 		int minPalindromeLikelihood = Integer.parseInt(arg[2]);
@@ -65,7 +95,7 @@ public class IlluminaClippingTrimmer implements Trimmer {
 				minSequenceLikelihood, minPrefix, palindromeKeepBoth);
 
 		try {
-			trimmer.loadSequences(seqs.getCanonicalPath());
+			trimmer.loadSequences(fastaFile.getCanonicalPath());
 		} catch (IOException ex) {
 			logger.handleException(ex);
 		}
