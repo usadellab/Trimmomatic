@@ -49,7 +49,6 @@ public class IlluminaClippingTrimmer implements Trimmer {
         String fastaPath = arg[0];
         File fastaFile = null;
 
-        // An absolute path provided by the user should always take precedence.
         File potentialFile = new File(fastaPath);
         if (potentialFile.isAbsolute()) {
             if (potentialFile.exists()) {
