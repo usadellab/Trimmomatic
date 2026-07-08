@@ -1,6 +1,8 @@
 package org.usadellab.trimmomatic.threading.trimlog;
 
+import java.io.BufferedOutputStream;
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.util.concurrent.Future;
@@ -15,7 +17,7 @@ public abstract class TrimLogCollector {
 		if (trimLog == null)
 			return null;
 
-		PrintStream trimLogStream = new PrintStream(trimLog);
+		PrintStream trimLogStream = new PrintStream(new BufferedOutputStream(new FileOutputStream(trimLog), 32768));
 
 		if (useWorker)
 			return new SelfThreadedTrimLogCollector(trimLogStream, threads * 5, exceptionHolder);
