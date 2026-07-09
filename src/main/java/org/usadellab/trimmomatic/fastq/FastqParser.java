@@ -27,6 +27,8 @@ public class FastqParser implements Closeable {
 	private FastqRecord current;
 
 	private AtomicBoolean atEOF;
+	/** Buffered header line carried over from one FASTA record to the next. */
+	private String fastaBufferedHeader = null;
 
 	public FastqParser(int phredOffset) {
 		this.phredOffset = phredOffset;
@@ -45,44 +47,59 @@ public class FastqParser implements Closeable {
 	public void parseOne() throws IOException {
 		current = null;
 
-		String name;
-		String sequence;
-		String comment;
-		String quality;
-
 		String line;
 
-		line = reader.readLine();
+		if (fastaBufferedHeader != null) {
+			line = fastaBufferedHeader;
+			fastaBufferedHeader = null;
+		} else {
+			line = reader.readLine();
+		}
+
 		if (line == null) {
 			atEOF.set(true);
 			return;
 		}
 
 		if (line.charAt(0) == '@') {
-			name = line.substring(1);
+			// Standard FASTQ record
+			String name = line.substring(1);
+
+			String sequence = reader.readLine();
+			if (sequence == null)
+				throw new RuntimeException("Missing sequence line from record: " + name);
+
+			String commentLine = reader.readLine();
+			if (commentLine == null)
+				throw new RuntimeException("Missing comment line from record: " + name);
+			if (commentLine.charAt(0) != '+')
+				throw new RuntimeException("Invalid FASTQ comment line: " + commentLine);
+
+			String quality = reader.readLine();
+			if (quality == null)
+				throw new RuntimeException("Missing quality line from record: " + name);
+
+			current = new FastqRecord(name, sequence, commentLine.substring(1), quality, phredOffset);
+
+		} else if (line.charAt(0) == '>') {
+			// FASTA record: assemble multi-line sequence, generate dummy Phred+33 quality
+			String name = line.substring(1).trim();
+			StringBuilder seq = new StringBuilder();
+			String seqLine;
+			while ((seqLine = reader.readLine()) != null && !seqLine.startsWith(">")) {
+				if (!seqLine.startsWith(";"))
+					seq.append(seqLine.trim());
+			}
+			// seqLine is null (EOF) or the next '>' header — buffer it for the next call
+			fastaBufferedHeader = seqLine;
+
+			String sequence = seq.toString().toUpperCase();
+			String quality = "I".repeat(sequence.length()); // Phred+40, valid Phred+33 dummy
+			current = new FastqRecord(name, sequence, "", quality, phredOffset);
+
 		} else {
-			throw new RuntimeException("Invalid FASTQ name line: " + line);
+			throw new RuntimeException("Invalid FASTQ/FASTA name line: " + line);
 		}
-
-		sequence = reader.readLine();
-		if (sequence == null)
-			throw new RuntimeException("Missing sequence line from record: " + name);
-
-		line = reader.readLine();
-		if (line == null)
-			throw new RuntimeException("Missing comment line from record: " + name);
-
-		if (line.charAt(0) == '+') {
-			comment = line.substring(1);
-		} else {
-			throw new RuntimeException("Invalid FASTQ comment line: " + line);
-		}
-
-		quality = reader.readLine();
-		if (quality == null)
-			throw new RuntimeException("Missing quality line from record: " + name);
-
-		current = new FastqRecord(name, sequence, comment, quality, phredOffset);
 	}
 
 	public int getProgress() {
@@ -144,6 +161,35 @@ public class FastqParser implements Closeable {
 			}
 		}
 		parseOne();
+	}
+
+	/**
+	 * Open a FASTA file (optionally compressed) and prime the first record.
+	 * Phred detection is skipped — callers must supply phredOffset=33 beforehand.
+	 */
+	public void openFasta(File input) throws IOException {
+		posTrackInputStream = new PositionTrackingInputStream(new FileInputStream(input), input.length());
+		InputStream contentInputStream = CompressionFormat.wrapStreamForParsing(posTrackInputStream, input.getName());
+		reader = new BufferedReader(new InputStreamReader(contentInputStream), 32768);
+		parseOne();
+	}
+
+	/**
+	 * Return true if the first non-blank line of the (optionally compressed) file
+	 * starts with '>' (FASTA format).
+	 */
+	public static boolean isFasta(File input) throws IOException {
+		try (InputStream raw = new FileInputStream(input);
+				InputStream decompressed = CompressionFormat.wrapStreamForParsing(raw, input.getName());
+				BufferedReader br = new BufferedReader(new InputStreamReader(decompressed))) {
+			String line;
+			while ((line = br.readLine()) != null) {
+				line = line.trim();
+				if (!line.isEmpty())
+					return line.charAt(0) == '>';
+			}
+		}
+		return false;
 	}
 
 	public void close() throws IOException {

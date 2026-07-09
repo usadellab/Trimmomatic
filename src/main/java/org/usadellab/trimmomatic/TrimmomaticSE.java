@@ -18,6 +18,7 @@ import org.usadellab.trimmomatic.threading.serializer.Serializer;
 import org.usadellab.trimmomatic.threading.trimlog.TrimLogCollector;
 import org.usadellab.trimmomatic.threading.trimstats.TrimStatsCollector;
 import org.usadellab.trimmomatic.trim.IlluminaClippingTrimmer;
+import org.usadellab.trimmomatic.trim.LongReadTrimmer;
 import org.usadellab.trimmomatic.trim.Trimmer;
 import org.usadellab.trimmomatic.util.Logger;
 
@@ -99,17 +100,30 @@ public class TrimmomaticSE extends Trimmomatic {
 
 	public void process(File input, File output, Trimmer trimmers[], int phredOffset, File trimLog, File statsSummary,
 			Boolean compressBlock, Integer compressLevel, int threads, boolean verbose) throws Exception {
-		FastqParser parser = new FastqParser(phredOffset);
-		parser.open(input);
 
-		if (phredOffset == 0) {
-			int phred = parser.determinePhredOffset();
-			if (phred != 0) {
-				logger.infoln("Quality encoding detected as phred" + phred);
-				parser.setPhredOffset(phred);
-			} else {
-				logger.errorln("Error: Unable to detect quality encoding");
-				System.exit(1);
+		boolean hasLongReadTrimmer = false;
+		for (Trimmer t : trimmers)
+			if (t instanceof LongReadTrimmer) { hasLongReadTrimmer = true; break; }
+
+		FastqParser parser;
+
+		if (hasLongReadTrimmer && FastqParser.isFasta(input)) {
+			if (phredOffset == 0) phredOffset = 33;
+			logger.infoln("FASTA input detected: converting to FASTQ with dummy Phred+33 quality for LONGREADTRIM");
+			parser = new FastqParser(phredOffset);
+			parser.openFasta(input);
+		} else {
+			parser = new FastqParser(phredOffset);
+			parser.open(input);
+			if (phredOffset == 0) {
+				int phred = parser.determinePhredOffset();
+				if (phred != 0) {
+					logger.infoln("Quality encoding detected as phred" + phred);
+					parser.setPhredOffset(phred);
+				} else {
+					logger.errorln("Error: Unable to detect quality encoding");
+					System.exit(1);
+				}
 			}
 		}
 

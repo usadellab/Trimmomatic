@@ -84,9 +84,10 @@ public class FastqParserTest {
 
 	@Test
 	public void testInvalidNameLine(@TempDir File tempDir) throws IOException {
+		// A line starting with neither '@' nor '>' is truly invalid
 		File fastqFile = new File(tempDir, "test_invalid_name.fastq");
 		try (FileWriter writer = new FileWriter(fastqFile)) {
-			writer.write(">seq1\nACGT\n+\nIIII\n");
+			writer.write("Xseq1\nACGT\n+\nIIII\n");
 		}
 
 		FastqParser parser = new FastqParser(33);
@@ -95,6 +96,49 @@ public class FastqParserTest {
 		} finally {
 			parser.close();
 		}
+	}
+
+	@Test
+	public void testFastaInput(@TempDir File tempDir) throws IOException {
+		File fastaFile = new File(tempDir, "test.fasta");
+		try (FileWriter writer = new FileWriter(fastaFile)) {
+			writer.write(">seq1\nACGTACGT\n>seq2\nTTTT\n");
+		}
+
+		FastqParser parser = new FastqParser(33);
+		try {
+			parser.openFasta(fastaFile);
+
+			assertTrue(parser.hasNext());
+			FastqRecord r1 = parser.next();
+			assertEquals("seq1", r1.getName());
+			assertEquals("ACGTACGT", r1.getSequence());
+			assertEquals(8, r1.getQuality().length());
+
+			assertTrue(parser.hasNext());
+			FastqRecord r2 = parser.next();
+			assertEquals("seq2", r2.getName());
+			assertEquals("TTTT", r2.getSequence());
+
+			assertFalse(parser.hasNext());
+		} finally {
+			parser.close();
+		}
+	}
+
+	@Test
+	public void testIsFasta(@TempDir File tempDir) throws IOException {
+		File fastaFile = new File(tempDir, "test.fasta");
+		try (FileWriter writer = new FileWriter(fastaFile)) {
+			writer.write(">seq1\nACGT\n");
+		}
+		assertTrue(FastqParser.isFasta(fastaFile));
+
+		File fastqFile = new File(tempDir, "test.fastq");
+		try (FileWriter writer = new FileWriter(fastqFile)) {
+			writer.write("@seq1\nACGT\n+\nIIII\n");
+		}
+		assertFalse(FastqParser.isFasta(fastqFile));
 	}
 
 	@Test
