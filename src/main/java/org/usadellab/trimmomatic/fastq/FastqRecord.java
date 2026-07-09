@@ -72,6 +72,17 @@ public class FastqRecord {
 		this.name = nameOverride;
 	}
 
+	/**
+	 * View constructor with explicit name and comment overrides. Used by
+	 * LongReadTrimmer so that the '+' quality header matches the renamed '@'
+	 * sequence header, keeping output valid for strict FASTQ parsers.
+	 */
+	public FastqRecord(FastqRecord base, int headPos, int length, String nameOverride, String commentOverride) {
+		this(base, headPos, length);
+		this.name = nameOverride;
+		this.comment = commentOverride;
+	}
+
 	public FastqRecord(FastqRecord base, String sequence, String quality, int phredOffset) {
 		this.sequence = sequence;
 		this.quality = quality;

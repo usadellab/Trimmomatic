@@ -77,11 +77,8 @@ public class TrimmerFactory {
 		if (trimmerName.equals("UMIEXTRACT"))
 			return new UmiExtractTrimmer(args);
 
-		if (trimmerName.equals("LONGREADCLIP"))
-			return new LongReadClipTrimmer(args);
-
-		if (trimmerName.equals("LONGREADSPLIT"))
-			return new LongReadSplitTrimmer(args);
+		if (trimmerName.equals("LONGREADTRIM"))
+			return new LongReadTrimmer(args);
 
 		throw new RuntimeException("Unknown trimmer: " + trimmerName);
 	}

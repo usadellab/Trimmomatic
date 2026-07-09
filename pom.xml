@@ -67,34 +67,47 @@
         	</resource>
     	</resources>
         <plugins>
-            <!-- Capture git commit hash and dirty-state at build time so that
-                 -version always identifies the exact source revision used. -->
+            <!-- Capture git commit hash and dirty-state by calling the git binary
+                 directly.  maven-antrun-plugin is used instead of git-commit-id-maven-
+                 plugin because the latter falls back to JGit even with useNativeGit=true,
+                 and JGit does not correctly follow the gitdir link in git worktrees
+                 (it reads the main repo HEAD instead of the worktree HEAD).
+                 Ant's <exec> task calls the real git binary which handles worktrees
+                 correctly, and exportAntProperties promotes the captured values into
+                 Maven properties so resource filtering can embed them in version.properties.
+                 Graceful fallback: if git is not available the properties remain as the
+                 literal placeholder strings, which is better than failing the build. -->
             <plugin>
-                <groupId>io.github.git-commit-id</groupId>
-                <artifactId>git-commit-id-maven-plugin</artifactId>
-                <version>9.0.1</version>
+                <artifactId>maven-antrun-plugin</artifactId>
                 <executions>
                     <execution>
                         <id>git-revision</id>
-                        <goals><goal>revision</goal></goals>
                         <phase>initialize</phase>
+                        <goals><goal>run</goal></goals>
+                        <configuration>
+                            <exportAntProperties>true</exportAntProperties>
+                            <target>
+                                <exec executable="git"
+                                      outputproperty="git.commit.id.abbrev"
+                                      failonerror="false"
+                                      errorproperty="git.rev.parse.err">
+                                    <arg value="rev-parse"/>
+                                    <arg value="--short=7"/>
+                                    <arg value="HEAD"/>
+                                </exec>
+                                <exec executable="git"
+                                      outputproperty="git.status.out"
+                                      failonerror="false">
+                                    <arg value="status"/>
+                                    <arg value="--porcelain"/>
+                                </exec>
+                                <condition property="git.dirty" value="true" else="false">
+                                    <not><equals arg1="${git.status.out}" arg2=""/></not>
+                                </condition>
+                            </target>
+                        </configuration>
                     </execution>
                 </executions>
-                <configuration>
-                    <!-- Graceful fallback when building from a source tarball or a
-                         shallow clone that has no git metadata available. -->
-                    <failOnNoGitDirectory>false</failOnNoGitDirectory>
-                    <failOnUnableToExtractRepoInfo>false</failOnUnableToExtractRepoInfo>
-                    <!-- We only need two properties; skip everything else for speed. -->
-                    <includeOnlyProperties>
-                        <includeOnlyProperty>git.commit.id.abbrev</includeOnlyProperty>
-                        <includeOnlyProperty>git.dirty</includeOnlyProperty>
-                    </includeOnlyProperties>
-                    <!-- Don't write a separate git.properties file into the JAR. -->
-                    <generateGitPropertiesFile>false</generateGitPropertiesFile>
-                    <!-- Use the short (7-char) abbreviation. -->
-                    <abbrevLength>7</abbrevLength>
-                </configuration>
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>

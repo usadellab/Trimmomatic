@@ -13,28 +13,35 @@
     </resources>
     <plugins>
       <plugin>
-        <groupId>io.github.git-commit-id</groupId>
-        <artifactId>git-commit-id-maven-plugin</artifactId>
-        <version>9.0.1</version>
+        <artifactId>maven-antrun-plugin</artifactId>
         <executions>
           <execution>
             <id>git-revision</id>
             <phase>initialize</phase>
             <goals>
-              <goal>revision</goal>
+              <goal>run</goal>
             </goals>
+            <configuration>
+              <exportAntProperties>true</exportAntProperties>
+              <target>
+                <exec>
+                  <arg />
+                  <arg />
+                  <arg />
+                </exec>
+                <exec>
+                  <arg />
+                  <arg />
+                </exec>
+                <condition>
+                  <not>
+                    <equals />
+                  </not>
+                </condition>
+              </target>
+            </configuration>
           </execution>
         </executions>
-        <configuration>
-          <failOnNoGitDirectory>false</failOnNoGitDirectory>
-          <failOnUnableToExtractRepoInfo>false</failOnUnableToExtractRepoInfo>
-          <includeOnlyProperties>
-            <includeOnlyProperty>git.commit.id.abbrev</includeOnlyProperty>
-            <includeOnlyProperty>git.dirty</includeOnlyProperty>
-          </includeOnlyProperties>
-          <generateGitPropertiesFile>false</generateGitPropertiesFile>
-          <abbrevLength>7</abbrevLength>
-        </configuration>
       </plugin>
       <plugin>
         <artifactId>maven-surefire-plugin</artifactId>
