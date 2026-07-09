@@ -377,11 +377,21 @@ public class LongReadTrimmer implements Trimmer {
 
     /**
      * Returns the number of 5′ bases to remove.
-     * Only forward-orientation adapters are checked; partial overlaps down to
-     * {@code minOverlap} are accepted because the adapter may hang off the read end.
+     *
+     * <p>Two scans are performed:
+     * <ol>
+     *   <li><b>Suffix scan</b> (forward adapters only): the adapter may hang off the
+     *       read's 5′ end; partial overlaps down to {@code minOverlap} are accepted.</li>
+     *   <li><b>Near-terminal full-adapter scan</b> (all orientations): ONT reads
+     *       typically have 2–10 bases of pore-entry artifact before the adapter begins.
+     *       This scan checks whether a full adapter starts at any position 0..minOverlap,
+     *       complementing the interior scan which starts from position minOverlap.</li>
+     * </ol>
      */
     private int findFivePrimeClip(String seq, int seqLen) {
         int clipFrom = 0;
+
+        // Suffix scan: adapter hangs off the 5′ end (forward adapters only).
         for (String adapter : fwdAdapters) {
             int adapterLen = adapter.length();
             int maxOverlap = Math.min(seqLen, adapterLen);
@@ -398,15 +408,45 @@ public class LongReadTrimmer implements Trimmer {
                 }
             }
         }
+
+        // Near-terminal full-adapter scan: full adapter starting at positions 0..minOverlap.
+        // Covers pore-entry artifact bases that precede the adapter in ONT reads.
+        // Uses all adapter orientations; RC adapters (e.g. RC of 3′ adapter) appear at
+        // the 5′ end of bottom-strand reads.
+        for (String adapter : adapters) {
+            int adapterLen = adapter.length();
+            if (adapterLen > seqLen) continue;
+            int allowedEdits = (int) (adapterLen * maxErrorRate);
+            int maxStart = Math.min(minOverlap, seqLen - adapterLen);
+            for (int s = 0; s <= maxStart; s++) {
+                if (editDistance(seq, s, adapter, 0, adapterLen, allowedEdits)
+                        <= allowedEdits) {
+                    int newClip = s + adapterLen;
+                    if (newClip > clipFrom) clipFrom = newClip;
+                    break;
+                }
+            }
+        }
+
         return clipFrom;
     }
 
     /**
      * Returns the 3′ keep boundary (exclusive): retain seq[0..trimTo-1].
-     * Both forward and RC adapters are checked; partial overlaps are accepted.
+     *
+     * <p>Two scans are performed:
+     * <ol>
+     *   <li><b>Prefix scan</b> (all orientations): the adapter may hang off the read's
+     *       3′ end; partial overlaps down to {@code minOverlap} are accepted.</li>
+     *   <li><b>Near-terminal full-adapter scan</b> (all orientations): symmetric
+     *       counterpart to the 5′ near-terminal scan; detects full adapters ending
+     *       within the last {@code minOverlap} bases of the read.</li>
+     * </ol>
      */
     private int findThreePrimeClip(String seq, int seqLen) {
         int trimTo = seqLen;
+
+        // Prefix scan: adapter hangs off the 3′ end.
         for (String adapter : adapters) {
             int adapterLen = adapter.length();
             int maxOverlap = Math.min(seqLen, adapterLen);
@@ -423,6 +463,24 @@ public class LongReadTrimmer implements Trimmer {
                 }
             }
         }
+
+        // Near-terminal full-adapter scan: full adapter ending at positions
+        // seqLen-minOverlap..seqLen.
+        for (String adapter : adapters) {
+            int adapterLen = adapter.length();
+            if (adapterLen > seqLen) continue;
+            int allowedEdits = (int) (adapterLen * maxErrorRate);
+            int minStart = Math.max(0, seqLen - adapterLen - minOverlap);
+            for (int s = minStart; s <= seqLen - adapterLen; s++) {
+                if (s >= trimTo) break;
+                if (editDistance(seq, s, adapter, 0, adapterLen, allowedEdits)
+                        <= allowedEdits) {
+                    if (s < trimTo) trimTo = s;
+                    break;
+                }
+            }
+        }
+
         return trimTo;
     }
 
