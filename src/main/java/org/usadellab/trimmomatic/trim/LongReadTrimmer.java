@@ -413,11 +413,13 @@ public class LongReadTrimmer implements Trimmer {
         // Covers pore-entry artifact bases that precede the adapter in ONT reads.
         // Uses all adapter orientations; RC adapters (e.g. RC of 3′ adapter) appear at
         // the 5′ end of bottom-strand reads.
+        // Guard: adapter end must not reach the 3′ terminal zone (s + adapterLen <=
+        // seqLen - minOverlap), so the scan cannot confuse a 3′ adapter for a 5′ one.
         for (String adapter : adapters) {
             int adapterLen = adapter.length();
-            if (adapterLen > seqLen) continue;
+            int maxStart = Math.min(minOverlap, seqLen - adapterLen - minOverlap);
+            if (maxStart < 0) continue;
             int allowedEdits = (int) (adapterLen * maxErrorRate);
-            int maxStart = Math.min(minOverlap, seqLen - adapterLen);
             for (int s = 0; s <= maxStart; s++) {
                 if (editDistance(seq, s, adapter, 0, adapterLen, allowedEdits)
                         <= allowedEdits) {
@@ -433,20 +435,11 @@ public class LongReadTrimmer implements Trimmer {
 
     /**
      * Returns the 3′ keep boundary (exclusive): retain seq[0..trimTo-1].
-     *
-     * <p>Two scans are performed:
-     * <ol>
-     *   <li><b>Prefix scan</b> (all orientations): the adapter may hang off the read's
-     *       3′ end; partial overlaps down to {@code minOverlap} are accepted.</li>
-     *   <li><b>Near-terminal full-adapter scan</b> (all orientations): symmetric
-     *       counterpart to the 5′ near-terminal scan; detects full adapters ending
-     *       within the last {@code minOverlap} bases of the read.</li>
-     * </ol>
+     * Both forward and RC adapters are checked; partial overlaps down to
+     * {@code minOverlap} are accepted because the adapter may hang off the read end.
      */
     private int findThreePrimeClip(String seq, int seqLen) {
         int trimTo = seqLen;
-
-        // Prefix scan: adapter hangs off the 3′ end.
         for (String adapter : adapters) {
             int adapterLen = adapter.length();
             int maxOverlap = Math.min(seqLen, adapterLen);
@@ -463,24 +456,6 @@ public class LongReadTrimmer implements Trimmer {
                 }
             }
         }
-
-        // Near-terminal full-adapter scan: full adapter ending at positions
-        // seqLen-minOverlap..seqLen.
-        for (String adapter : adapters) {
-            int adapterLen = adapter.length();
-            if (adapterLen > seqLen) continue;
-            int allowedEdits = (int) (adapterLen * maxErrorRate);
-            int minStart = Math.max(0, seqLen - adapterLen - minOverlap);
-            for (int s = minStart; s <= seqLen - adapterLen; s++) {
-                if (s >= trimTo) break;
-                if (editDistance(seq, s, adapter, 0, adapterLen, allowedEdits)
-                        <= allowedEdits) {
-                    if (s < trimTo) trimTo = s;
-                    break;
-                }
-            }
-        }
-
         return trimTo;
     }
 
