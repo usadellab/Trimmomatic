@@ -12,7 +12,7 @@ import org.usadellab.trimmomatic.util.compression.BlockOutputStream;
 import org.usadellab.trimmomatic.util.compression.CompressionFormat;
 import org.usadellab.trimmomatic.util.compression.ParallelCompressor;
 
-public abstract class Serializer {
+public abstract class Serializer implements AutoCloseable {
 	public static Serializer makeSerializer(Logger logger, boolean useWorker, boolean useParallelCompressor,
 			Integer compressLevel, int buffers, File output, ExceptionHolder exceptionHolder) throws IOException {
 		OutputStream stream = null;

@@ -7,7 +7,7 @@ import org.usadellab.trimmomatic.TrimStats;
 import org.usadellab.trimmomatic.threading.BlockOfRecords;
 import org.usadellab.trimmomatic.threading.ExceptionHolder;
 
-public abstract class TrimStatsCollector {
+public abstract class TrimStatsCollector implements AutoCloseable {
 	public static TrimStatsCollector makeTrimStatsCollector(boolean useWorker, int threads,
 			ExceptionHolder exceptionHolder) {
 		if (useWorker)

@@ -6,7 +6,7 @@ import org.usadellab.trimmomatic.threading.BlockOfRecords;
 import org.usadellab.trimmomatic.threading.BlockOfWork;
 import org.usadellab.trimmomatic.threading.ExceptionHolder;
 
-public abstract class Pipeline {
+public abstract class Pipeline implements AutoCloseable {
 	public static Pipeline makePipeline(int threads, ExceptionHolder exceptionHolder) {
 		if (threads == 1)
 			return new ParasiteSerialPipeline();

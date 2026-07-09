@@ -20,7 +20,7 @@ import org.usadellab.trimmomatic.threading.ExceptionHolder;
  * output via independent blocking queues, so the main processing loop
  * never blocks on I/O.
  */
-public class InterleavedParserPair {
+public class InterleavedParserPair implements AutoCloseable {
 
     private final ArrayBlockingQueue<List<FastqRecord>> r1Queue;
     private final ArrayBlockingQueue<List<FastqRecord>> r2Queue;

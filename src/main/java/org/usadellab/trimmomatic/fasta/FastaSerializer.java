@@ -1,10 +1,11 @@
 package org.usadellab.trimmomatic.fasta;
 
+import java.io.Closeable;
 import java.io.File;
 import java.io.IOException;
 import java.io.PrintStream;
 
-public class FastaSerializer {
+public class FastaSerializer implements Closeable {
 
 	public static final int BASES_PER_LINE = 60;
 
@@ -23,7 +24,8 @@ public class FastaSerializer {
 	}
 
 	public void close() throws IOException {
-		stream.close();
+		if (stream != null)
+			stream.close();
 	}
 
 	public synchronized void writeRecord(FastaRecord record) {

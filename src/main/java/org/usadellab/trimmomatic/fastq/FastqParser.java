@@ -1,6 +1,7 @@
 package org.usadellab.trimmomatic.fastq;
 
 import java.io.BufferedReader;
+import java.io.Closeable;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -12,7 +13,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import org.usadellab.trimmomatic.util.PositionTrackingInputStream;
 import org.usadellab.trimmomatic.util.compression.CompressionFormat;
 
-public class FastqParser {
+public class FastqParser implements Closeable {
 
 	private static final int  PREREAD_COUNT     = 10000;
 	private static final long PREREAD_MAX_BYTES = 4L * 1024 * 1024; // 4 MB byte cap for phred detection
@@ -146,7 +147,10 @@ public class FastqParser {
 	}
 
 	public void close() throws IOException {
-		reader.close();
+		// open() may not have completed (e.g. FileInputStream threw before reader
+		// was assigned) — close() must still be safe to call in that case.
+		if (reader != null)
+			reader.close();
 	}
 
 	public boolean hasNext() {

@@ -2,12 +2,13 @@ package org.usadellab.trimmomatic.fasta;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedReader;
+import java.io.Closeable;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 
-public class FastaParser {
+public class FastaParser implements Closeable {
 	private BufferedReader reader;
 
 	private String currentLine;
@@ -50,7 +51,8 @@ public class FastaParser {
 	}
 
 	public void close() throws IOException {
-		reader.close();
+		if (reader != null)
+			reader.close();
 	}
 
 	public boolean hasNext() {

@@ -11,7 +11,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import org.usadellab.trimmomatic.threading.BlockOfRecords;
 import org.usadellab.trimmomatic.threading.ExceptionHolder;
 
-public abstract class TrimLogCollector {
+public abstract class TrimLogCollector implements AutoCloseable {
 	public static TrimLogCollector makeTrimLogCollector(boolean useWorker, int threads, File trimLog,
 			ExceptionHolder exceptionHolder) throws IOException {
 		if (trimLog == null)

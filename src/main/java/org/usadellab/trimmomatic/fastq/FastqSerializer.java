@@ -1,6 +1,7 @@
 package org.usadellab.trimmomatic.fastq;
 
 import java.io.BufferedWriter;
+import java.io.Closeable;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -9,7 +10,7 @@ import java.io.OutputStreamWriter;
 
 import org.usadellab.trimmomatic.util.compression.CompressionFormat;
 
-public class FastqSerializer {
+public class FastqSerializer implements Closeable {
 
 	private BufferedWriter writer;
 	private File inputFile;
@@ -32,7 +33,8 @@ public class FastqSerializer {
 	}
 
 	public void close() throws IOException {
-		writer.close();
+		if (writer != null)
+			writer.close();
 	}
 
 	public void writeRecord(FastqRecord record) throws IOException {

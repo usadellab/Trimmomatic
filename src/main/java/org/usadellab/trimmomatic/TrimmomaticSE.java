@@ -39,64 +39,60 @@ public class TrimmomaticSE extends Trimmomatic {
 
 		ExceptionHolder exceptionHolder = new ExceptionHolder();
 
-		Parser parser = Parser.makeParser(useParserWorker, threads, rawParser, exceptionHolder);
-		Pipeline pipeline = Pipeline.makePipeline(threads, exceptionHolder);
-		Serializer serializer = Serializer.makeSerializer(logger, useSerializerWorker, useParallelCompressor,
-				compressLevel, threads, output, exceptionHolder);
-
-		List<Serializer> serializers = new ArrayList<Serializer>();
-		serializers.add(serializer);
-
-		TrimStatsCollector statsCollector = TrimStatsCollector.makeTrimStatsCollector(useStatsWorker, threads,
+		// Resources are declared in the reverse of the order they must be closed in
+		// (parser first, statsCollector last) — try-with-resources closes bottom-to-top —
+		// so cleanup still happens if the loop below throws, or if a later resource here
+		// fails to construct after an earlier one already started background threads.
+		try (TrimStatsCollector statsCollector = TrimStatsCollector.makeTrimStatsCollector(useStatsWorker, threads,
 				exceptionHolder);
-		TrimLogCollector logCollector = TrimLogCollector.makeTrimLogCollector(useLogWorker, threads, trimLog,
-				exceptionHolder);
+				TrimLogCollector logCollector = TrimLogCollector.makeTrimLogCollector(useLogWorker, threads, trimLog,
+						exceptionHolder);
+				Serializer serializer = Serializer.makeSerializer(logger, useSerializerWorker, useParallelCompressor,
+						compressLevel, threads, output, exceptionHolder);
+				Pipeline pipeline = Pipeline.makePipeline(threads, exceptionHolder);
+				Parser parser = Parser.makeParser(useParserWorker, threads, rawParser, exceptionHolder)) {
 
-		boolean done = false;
+			List<Serializer> serializers = new ArrayList<Serializer>();
+			serializers.add(serializer);
 
-		List<FastqRecord> recs1 = null;
+			boolean done = false;
 
-		while (!done) {
-			recs1 = null;
-			while (recs1 == null)
-				recs1 = parser.poll();
+			List<FastqRecord> recs1 = null;
 
-			done = recs1.size() == 0;
+			while (!done) {
+				recs1 = null;
+				while (recs1 == null)
+					recs1 = parser.poll();
 
-			BlockOfRecords bor = new BlockOfRecords(recs1, null);
-			BlockOfWork work = new BlockOfWork(logger, trimmers, bor, done, false, 0, trimLog != null, serializers,
-					exceptionHolder);
+				done = recs1.size() == 0;
 
-			List<SerializedBlock> buffers = work.getBlocks();
+				BlockOfRecords bor = new BlockOfRecords(recs1, null);
+				BlockOfWork work = new BlockOfWork(logger, trimmers, bor, done, false, 0, trimLog != null, serializers,
+						exceptionHolder);
 
-			serializer.queueForWrite(buffers.get(0), exceptionHolder);
+				List<SerializedBlock> buffers = work.getBlocks();
 
-			Future<BlockOfRecords> future = pipeline.submit(work);
+				serializer.queueForWrite(buffers.get(0), exceptionHolder);
 
-			serializer.pollWritable();
+				Future<BlockOfRecords> future = pipeline.submit(work);
 
-			statsCollector.put(future);
+				serializer.pollWritable();
 
-			if (logCollector != null) {
-				logger.infoln("queue for log");
-				logCollector.put(future);
+				statsCollector.put(future);
+
+				if (logCollector != null) {
+					logger.infoln("queue for log");
+					logCollector.put(future);
+				}
 			}
-		}
 
-		parser.close();
-		pipeline.close();
-		serializer.close();
+			logger.infoln(statsCollector.getStats().processStatsSE(statsSummary));
 
-		if (logCollector != null)
-			logCollector.close();
-
-		statsCollector.close();
-		logger.infoln(statsCollector.getStats().processStatsSE(statsSummary));
-
-		if (verbose) {
-			for (Trimmer t : trimmers) {
-				if (t instanceof IlluminaClippingTrimmer ict)
-					ict.printStats(logger);
+			if (verbose) {
+				for (Trimmer t : trimmers) {
+					if (t instanceof IlluminaClippingTrimmer ict)
+						ict.printStats(logger);
+				}
 			}
 		}
 	}

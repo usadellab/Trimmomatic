@@ -23,29 +23,30 @@ public class Pairomatic {
 	private Set<String> getFastqNames(File file, Character delimiter) throws IOException {
 		Set<String> names = new LinkedHashSet<String>();
 
-		FastqParser parser = new FastqParser(0);
-		parser.open(file);
+		try (FastqParser parser = new FastqParser(0)) {
+			parser.open(file);
 
-		while (parser.hasNext()) {
-			FastqRecord rec = parser.next();
+			while (parser.hasNext()) {
+				FastqRecord rec = parser.next();
 
-			String name = rec.getName();
+				String name = rec.getName();
 
-			if (delimiter != null) {
-				int index = name.lastIndexOf(delimiter);
+				if (delimiter != null) {
+					int index = name.lastIndexOf(delimiter);
 
-				if (index == -1)
-					throw new RuntimeException("Error: Failed to find expected delimiter '" + delimiter
-							+ "' in record named '" + name + "'");
+					if (index == -1)
+						throw new RuntimeException("Error: Failed to find expected delimiter '" + delimiter
+								+ "' in record named '" + name + "'");
 
-				name = name.substring(0, index);
+					name = name.substring(0, index);
+				}
+
+				if (names.contains(name))
+					throw new RuntimeException("Error: Found " + name
+							+ " more than once in file - check delimiter is correct '" + delimiter + "'");
+
+				names.add(name);
 			}
-
-			if (names.contains(name))
-				throw new RuntimeException("Error: Found " + name
-						+ " more than once in file - check delimiter is correct '" + delimiter + "'");
-
-			names.add(name);
 		}
 
 		return names;
@@ -77,39 +78,34 @@ public class Pairomatic {
 
 	private void splitFastq(File input, File match, File unmatch, Set<String> toKeep, Character delimiter)
 			throws IOException {
-		FastqParser parser = new FastqParser(0);
-		parser.open(input);
+		try (FastqParser parser = new FastqParser(0);
+				FastqSerializer matchSerializer = new FastqSerializer();
+				FastqSerializer unmatchSerializer = new FastqSerializer()) {
+			parser.open(input);
+			matchSerializer.open(match);
+			unmatchSerializer.open(unmatch);
 
-		FastqSerializer matchSerializer = new FastqSerializer();
-		matchSerializer.open(match);
+			while (parser.hasNext()) {
+				FastqRecord rec = parser.next();
 
-		FastqSerializer unmatchSerializer = new FastqSerializer();
-		unmatchSerializer.open(unmatch);
+				String name = rec.getName();
 
-		while (parser.hasNext()) {
-			FastqRecord rec = parser.next();
+				if (delimiter != null) {
+					int index = name.indexOf(delimiter);
 
-			String name = rec.getName();
+					if (index == -1)
+						throw new RuntimeException("Failed to find expected delimiter '" + delimiter
+								+ "' in record named '" + name + "'");
 
-			if (delimiter != null) {
-				int index = name.indexOf(delimiter);
+					name = name.substring(0, index);
+				}
 
-				if (index == -1)
-					throw new RuntimeException(
-							"Failed to find expected delimiter '" + delimiter + "' in record named '" + name + "'");
-
-				name = name.substring(0, index);
+				if (toKeep.contains(name))
+					matchSerializer.writeRecord(rec);
+				else
+					unmatchSerializer.writeRecord(rec);
 			}
-
-			if (toKeep.contains(name))
-				matchSerializer.writeRecord(rec);
-			else
-				unmatchSerializer.writeRecord(rec);
 		}
-
-		matchSerializer.close();
-		unmatchSerializer.close();
-
 	}
 
 	public void process(File input1, File input2, File output1P, File output1U, File output2P, File output2U,

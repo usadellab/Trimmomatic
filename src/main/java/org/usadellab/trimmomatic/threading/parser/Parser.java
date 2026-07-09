@@ -9,7 +9,7 @@ import org.usadellab.trimmomatic.fastq.FastqParser;
 import org.usadellab.trimmomatic.fastq.FastqRecord;
 import org.usadellab.trimmomatic.threading.ExceptionHolder;
 
-public abstract class Parser {
+public abstract class Parser implements AutoCloseable {
 	public static final int  BLOCK_MAX_RECORDS = 32768;             // 32k records per block
 	public static final long BLOCK_MAX_BYTES   = 64L * 1024 * 1024; // 64 MB per block (long-read safety)
 
