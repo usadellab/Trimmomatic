@@ -36,6 +36,7 @@ import org.usadellab.trimmomatic.fastq.FastqRecord;
  *   - Multiple adapters: correct adapter chosen
  *   - Interior chimera splitting: read split into fragments
  *   - Interior splitting disabled for HIFI platform
+ *   - HIFI-only 3′ near-terminal full-adapter scan (trimmed); confirmed absent for ONT
  *   - Split fragments have suffix /splitNofM in name
  *   - Fragment ends re-clipped after split (residual fix)
  *   - Empty FASTA → IllegalArgumentException
@@ -338,6 +339,39 @@ public class LongReadTrimmerTest {
         // HIFI disables interior splitting entirely.
         // The adapter is in the interior and won't be caught by terminal clipping.
         assertEquals(1, frags.length, "HIFI should not split the read");
+    }
+
+    // ------------------------------------------------------------------
+    // 3′ near-terminal full-adapter scan (HIFI only)
+    // Covers a full adapter followed by a few trailing bases rather than
+    // hanging off the exact 3′ end -- the gap left once interior splitting
+    // is disabled for HIFI.
+
+    @Test
+    public void testHiFi3PrimeNearTerminalFullAdapter_trimmed() throws Exception {
+        // 30bp payload + full 20bp adapter + 4 trailing bases, not hanging off the end.
+        File fa = singleAdapterFasta(SPLIT_ADAPTER);
+        FastqRecord r = rec("G".repeat(30) + SPLIT_ADAPTER + "TTTT");
+
+        FastqRecord out = trimOne(faPath(fa, 0.0f, 10, 20, "HIFI"), r);
+        assertNotNull(out);
+        assertEquals("G".repeat(30), out.getSequence());
+    }
+
+    @Test
+    public void testOnt3PrimeNearTerminalGap_stillNotTrimmed() throws Exception {
+        // Same layout as above, but ONT/CLR must not gain this scan: it produced
+        // false-positive over-clipping on real payload sequence at ONT/CLR error
+        // rates and was deliberately reverted for those platforms (see 835e329).
+        // minFragLen=30 keeps workLen (54) below the interior-split threshold
+        // (2*minOverlap + 2*minFragLen = 80), so interior splitting can't mask
+        // the absence of the near-terminal scan here.
+        File fa = singleAdapterFasta(SPLIT_ADAPTER);
+        FastqRecord r = rec("G".repeat(30) + SPLIT_ADAPTER + "TTTT");
+
+        FastqRecord out = trimOne(faPath(fa, 0.0f, 10, 30, "ONT"), r);
+        assertNotNull(out);
+        assertEquals("G".repeat(30) + SPLIT_ADAPTER + "TTTT", out.getSequence());
     }
 
     // ------------------------------------------------------------------

@@ -34,7 +34,10 @@ import org.usadellab.trimmomatic.fastq.FastqRecord;
  *       immediately, removing residual adapter before the fragment is emitted.</li>
  *   <li><b>Platform hint.</b>  {@code HIFI} disables interior splitting entirely,
  *       preventing false-positive chimera calls on near-error-free PacBio HiFi
- *       reads.</li>
+ *       reads. To compensate for the loss of interior detection, {@code HIFI} also
+ *       enables a 3′ near-terminal full-adapter scan (mirroring the always-on 5′
+ *       scan) so adapters followed by a few trailing bases are still found without
+ *       requiring the adapter to hang off the exact read end.</li>
  * </ol>
  *
  * <p><b>Interior vs terminal matching.</b>  Terminal clipping accepts partial
@@ -435,11 +438,25 @@ public class LongReadTrimmer implements Trimmer {
 
     /**
      * Returns the 3′ keep boundary (exclusive): retain seq[0..trimTo-1].
-     * Both forward and RC adapters are checked; partial overlaps down to
-     * {@code minOverlap} are accepted because the adapter may hang off the read end.
+     *
+     * <p>Two scans are performed:
+     * <ol>
+     *   <li><b>Prefix scan</b> (all orientations): the adapter may hang off the read's
+     *       3′ end; partial overlaps down to {@code minOverlap} are accepted.</li>
+     *   <li><b>Near-terminal full-adapter scan</b> ({@code HIFI} platform only, all
+     *       orientations): symmetric counterpart to the 5′ near-terminal scan, detecting
+     *       full adapters that end a few bases before the true 3′ terminus (e.g. a
+     *       trailing barcode or fill bases after the adapter) rather than hanging off
+     *       the very end. Restricted to HIFI because at ONT/CLR error rates this scan
+     *       produced false-positive over-clipping on real payload sequence and was
+     *       removed for those platforms; HIFI's much lower error rate makes a chance
+     *       match within the allowed edit distance far less likely.</li>
+     * </ol>
      */
     private int findThreePrimeClip(String seq, int seqLen) {
         int trimTo = seqLen;
+
+        // Prefix scan: adapter hangs off the 3′ end.
         for (String adapter : adapters) {
             int adapterLen = adapter.length();
             int maxOverlap = Math.min(seqLen, adapterLen);
@@ -456,6 +473,29 @@ public class LongReadTrimmer implements Trimmer {
                 }
             }
         }
+
+        // Near-terminal full-adapter scan (HIFI only): full adapter ending within the
+        // last minOverlap bases before the true 3′ terminus. Guard: adapter start must
+        // not reach the 5′ terminal zone (s >= minOverlap), so the scan cannot confuse
+        // a 5′ adapter for a 3′ one on short reads.
+        if (platform == Platform.HIFI) {
+            for (String adapter : adapters) {
+                int adapterLen = adapter.length();
+                int minStart = Math.max(minOverlap, seqLen - adapterLen - minOverlap);
+                int maxStart = seqLen - adapterLen;
+                if (minStart > maxStart) continue;
+                int allowedEdits = (int) (adapterLen * maxErrorRate);
+                for (int s = minStart; s <= maxStart; s++) {
+                    if (s >= trimTo) break;
+                    if (editDistance(seq, s, adapter, 0, adapterLen, allowedEdits)
+                            <= allowedEdits) {
+                        if (s < trimTo) trimTo = s;
+                        break;
+                    }
+                }
+            }
+        }
+
         return trimTo;
     }
 
