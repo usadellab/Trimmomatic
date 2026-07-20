@@ -34,6 +34,21 @@ public class TrimmomaticPE extends Trimmomatic {
 			File output1U, File output2P, File output2U, Trimmer trimmers[], File trimLog, File statsSummary,
 			PairingValidator pairingValidator, Boolean compressBlock, Integer compressLevel, int threads, boolean verbose,
 			int technicalRead) throws Exception {
+		processPipeline(rawParser1, rawParser2, interleaved, output1P, output1U, output2P, output2U, trimmers, null,
+				null, trimLog, statsSummary, pairingValidator, compressBlock, compressLevel, threads, verbose,
+				technicalRead);
+	}
+
+	/**
+	 * trimmers1/trimmers2 (both non-null together, or both null) select per-mate
+	 * step routing: mate 1 runs only trimmers1, mate 2 runs only trimmers2, and
+	 * either mate's steps returning null drops the whole pair. Mutually exclusive
+	 * with technicalRead != 0 — see BlockOfWork's constructor validation.
+	 */
+	public void processPipeline(FastqParser rawParser1, FastqParser rawParser2, boolean interleaved, File output1P,
+			File output1U, File output2P, File output2U, Trimmer trimmers[], Trimmer trimmers1[], Trimmer trimmers2[],
+			File trimLog, File statsSummary, PairingValidator pairingValidator, Boolean compressBlock,
+			Integer compressLevel, int threads, boolean verbose, int technicalRead) throws Exception {
 		boolean useParserWorkers = threads > 1;
 		boolean useSerializerWorkers = threads > 1;
 		boolean useParallelCompressor = compressBlock != null ? compressBlock : threads > 1;
@@ -115,8 +130,8 @@ public class TrimmomaticPE extends Trimmomatic {
 					pairingValidator.validatePairs(recs1, recs2);
 
 				BlockOfRecords bor = new BlockOfRecords(recs1, recs2);
-				BlockOfWork work = new BlockOfWork(logger, trimmers, bor, done, true, technicalRead, trimLog != null,
-						serializers, exceptionHolder);
+				BlockOfWork work = new BlockOfWork(logger, trimmers, trimmers1, trimmers2, bor, done, true,
+						technicalRead, trimLog != null, serializers, exceptionHolder);
 
 				List<SerializedBlock> buffers = work.getBlocks();
 
@@ -153,6 +168,19 @@ public class TrimmomaticPE extends Trimmomatic {
 			File output2U, Trimmer trimmers[], int phredOffset, File trimLog, File statsSummary, boolean validatePairing,
 			Boolean compressBlock, Integer compressLevel, int threads, boolean verbose, int technicalRead)
 			throws Exception {
+		process(input1, input2, interleaved, output1P, output1U, output2P, output2U, trimmers, null, null,
+				phredOffset, trimLog, statsSummary, validatePairing, compressBlock, compressLevel, threads, verbose,
+				technicalRead);
+	}
+
+	/**
+	 * trimmers1/trimmers2 (both non-null together, or both null) select per-mate
+	 * step routing — see processPipeline's per-mate overload.
+	 */
+	public void process(File input1, File input2, boolean interleaved, File output1P, File output1U, File output2P,
+			File output2U, Trimmer trimmers[], Trimmer trimmers1[], Trimmer trimmers2[], int phredOffset,
+			File trimLog, File statsSummary, boolean validatePairing, Boolean compressBlock, Integer compressLevel,
+			int threads, boolean verbose, int technicalRead) throws Exception {
 		FastqParser parser1 = new FastqParser(phredOffset);
 		FastqParser parser2 = interleaved ? null : new FastqParser(phredOffset);
 
@@ -215,8 +243,9 @@ public class TrimmomaticPE extends Trimmomatic {
 		if (validatePairing && !interleaved)
 			pairingValidator = new PairingValidator(logger);
 
-		processPipeline(parser1, parser2, interleaved, output1P, output1U, output2P, output2U, trimmers, trimLog,
-				statsSummary, pairingValidator, compressBlock, compressLevel, threads, verbose, technicalRead);
+		processPipeline(parser1, parser2, interleaved, output1P, output1U, output2P, output2U, trimmers, trimmers1,
+				trimmers2, trimLog, statsSummary, pairingValidator, compressBlock, compressLevel, threads, verbose,
+				technicalRead);
 
 	}
 
@@ -301,6 +330,8 @@ public class TrimmomaticPE extends Trimmomatic {
 		boolean interleaved = false;
 		boolean longread = false;
 		int technicalRead = 0;
+		String pe1StepsStr = null;
+		String pe2StepsStr = null;
 
 		Boolean compressBlock = null;
 		Integer compressLevel = null;
@@ -375,6 +406,16 @@ public class TrimmomaticPE extends Trimmomatic {
 						}
 					} else
 						badOption = true;
+				} else if (arg.equals("-pe1steps")) {
+					if (argIndex < args.length)
+						pe1StepsStr = args[argIndex++];
+					else
+						badOption = true;
+				} else if (arg.equals("-pe2steps")) {
+					if (argIndex < args.length)
+						pe2StepsStr = args[argIndex++];
+					else
+						badOption = true;
 				} else {
 					System.err.println("Unknown option " + arg);
 					badOption = true;
@@ -383,11 +424,27 @@ public class TrimmomaticPE extends Trimmomatic {
 				nonOptionArgs.add(arg);
 		}
 
+		boolean perMateMode = (pe1StepsStr != null) || (pe2StepsStr != null);
+
+		if (perMateMode && (pe1StepsStr == null || pe2StepsStr == null)) {
+			System.err.println("-pe1steps and -pe2steps must both be given together");
+			badOption = true;
+		}
+		if (perMateMode && technicalRead != 0) {
+			System.err.println("-pe1steps/-pe2steps cannot be combined with -technicalread");
+			badOption = true;
+		}
+
 		if (showVersion)
 			Trimmomatic.showVersion();
 
 		int inputFiles = interleaved ? 1 : 2;
-		int additionalArgs = 1 + (templateInput == null ? inputFiles : 0) + (templateOutput == null ? 4 : 0);
+		// Normally at least one trailing trimmer step is required (the "+1"); in
+		// per-mate mode the steps live in -pe1steps/-pe2steps instead, and the
+		// trailing list must in fact be EMPTY (checked below), so that minimum
+		// doesn't apply.
+		int additionalArgs = (perMateMode ? 0 : 1) + (templateInput == null ? inputFiles : 0)
+				+ (templateOutput == null ? 4 : 0);
 
 		if ((nonOptionArgs.size() < additionalArgs) || badOption)
 			return showVersion;
@@ -455,10 +512,22 @@ public class TrimmomaticPE extends Trimmomatic {
 
 		Trimmer trimmers[] = createTrimmers(logger, nonOptionArgsIter);
 
+		if (perMateMode && trimmers.length > 0) {
+			logger.errorln("Steps given both via -pe1steps/-pe2steps and as a trailing step list; "
+					+ "put every step under one or the other, not both.");
+			System.exit(1);
+		}
+
+		Trimmer trimmers1[] = null, trimmers2[] = null;
+		if (perMateMode) {
+			trimmers1 = createTrimmersFromString(logger, pe1StepsStr);
+			trimmers2 = createTrimmersFromString(logger, pe2StepsStr);
+		}
+
 		TrimmomaticPE tm = new TrimmomaticPE(logger);
 		tm.process(inputs[0], inputs[1], interleaved, outputs[0], outputs[1], outputs[2], outputs[3], trimmers,
-				phredOffset, trimLog, statsSummary, validatePairs, compressBlock, compressLevel, threads, verbose,
-				technicalRead);
+				trimmers1, trimmers2, phredOffset, trimLog, statsSummary, validatePairs, compressBlock, compressLevel,
+				threads, verbose, technicalRead);
 
 		logger.infoln("TrimmomaticPE: Completed successfully");
 		return true;
@@ -467,7 +536,7 @@ public class TrimmomaticPE extends Trimmomatic {
 	public static void main(String[] args) throws Exception {
 		if (!run(args)) {
 			System.err.println(
-					"Usage: [-version] [-threads <threads>] [-phred33|-phred64] [-longread] [-trimlog <trimLogFile>] [-summary <statsSummaryFile>] [-quiet] [-verbose] [-validatePairs] [-interleaved] [-technicalread <1|2>] [-compressLevel <lvl>] [-compressStream|-compressBlock] [-basein <inputBase> | <inputFile1> [<inputFile2>]] [-baseout <outputBase> | <outputFile1P> <outputFile1U> <outputFile2P> <outputFile2U>] <trimmer1>...");
+					"Usage: [-version] [-threads <threads>] [-phred33|-phred64] [-longread] [-trimlog <trimLogFile>] [-summary <statsSummaryFile>] [-quiet] [-verbose] [-validatePairs] [-interleaved] [-technicalread <1|2>] [-pe1steps <steps> -pe2steps <steps>] [-compressLevel <lvl>] [-compressStream|-compressBlock] [-basein <inputBase> | <inputFile1> [<inputFile2>]] [-baseout <outputBase> | <outputFile1P> <outputFile1U> <outputFile2P> <outputFile2U>] <trimmer1>...");
 			System.exit(1);
 		}
 	}

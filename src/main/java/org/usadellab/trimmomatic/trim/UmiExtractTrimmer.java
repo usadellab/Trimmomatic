@@ -34,6 +34,24 @@ public class UmiExtractTrimmer extends AbstractSingleRecordTrimmer {
         separator = arg.length > 1 ? arg[1] : "_";
     }
 
+    /**
+     * UMIEXTRACT renames based on each record's own leading bases, so applying it
+     * to both mates of a pair independently (as AbstractSingleRecordTrimmer would)
+     * tags them with different, mismatched suffixes and silently desyncs mate
+     * names — while also chopping real bases off whichever mate isn't actually
+     * the barcode/UMI read. Refuse instead of corrupting: route this step to a
+     * single mate (-pe1steps/-pe2steps or -technicalread), not the shared list.
+     */
+    @Override
+    public FastqRecord[] processRecords(FastqRecord[] in) {
+        if (in != null && in.length > 1)
+            throw new IllegalStateException(
+                    "UMIEXTRACT cannot run in symmetric paired-end mode: it would rename each mate "
+                    + "independently from its own leading bases, desynchronising mate names. "
+                    + "Route it to one mate only, e.g. via -pe1steps/-pe2steps or -technicalread.");
+        return super.processRecords(in);
+    }
+
     @Override
     public FastqRecord processRecord(FastqRecord in) {
         int len = in.getLength();

@@ -37,7 +37,7 @@ The easiest option is to download a binary release zip, and unpack it somewhere 
 
 ### Simplified Invocation (v0.41+)
 
-For standard cleaning of Illumina data, you can now invoke Trimmomatic with just the input files. Output files will be created in the same folder as the input files and named automatically (appending `.trimmed.fq.gz` for single read files or `.trimmed.paired.fq.gz` & `.trimmed.unpaired.fq.gz` for paired end read files), and standard trimming steps will be applied — `ILLUMINACLIP:TruSeq3-SE-GGGGG.fa:2:30:10` (TruSeq3 single-end adapters plus a polyG sequence for NovaSeq two-colour chemistry) for single-end input, or `ILLUMINACLIP:TruSeq3-PE-2-GGGGG.fa:2:30:10` (TruSeq3 paired-end adapters plus a polyG sequence) for paired-end input — followed by `SLIDINGWINDOW:4:20 MINLEN:36`. This mode also automatically detects and uses all available processor threads.
+For standard cleaning of Illumina data, you can now invoke Trimmomatic with just the input files. Output files will be created in the same folder as the input files and named automatically (appending `.trimmed.fq.gz` for single read files or `.trimmed.paired.fq.gz` & `.trimmed.unpaired.fq.gz` for paired end read files), and standard trimming steps will be applied.  `ILLUMINACLIP:TruSeq3-SE-GGGGG.fa:2:30:10` (TruSeq3 single-end adapters plus a polyG sequence for NovaSeq two-colour chemistry) for single-end input, or `ILLUMINACLIP:TruSeq3-PE-2-GGGGG.fa:2:30:10` (TruSeq3 paired-end adapters plus a polyG sequence) for paired-end input, followed by `SLIDINGWINDOW:4:20 MINLEN:36`. This mode also automatically detects and uses all available processor threads.
 
 ```bash
 java -jar Trimmomatic-0.42.jar input.fq.gz
@@ -51,7 +51,7 @@ java -jar Trimmomatic-0.42.jar input_R1.fq.gz input_R2.fq.gz
 
 #### Note for HPC users (SGE, SLURM, LSF, PBS)
 
-On HPC nodes where the scheduler does not restrict CPU visibility via cgroups (common on SGE and some SLURM configurations), the JVM and the system C library both report the **full node CPU count** regardless of how many slots were allocated to the job. Simplified invocation uses `availableProcessors()` to set the thread count, which can be the full node count (e.g. 256). This causes the system memory allocator (glibc) to reserve virtual address space proportional to that CPU count (up to 8 × cores × 64 MB per arena), which can exhaust the per-job virtual memory limit (`ulimit -v`) before any reads are processed — even when the node has abundant physical RAM.
+On HPC nodes where the scheduler does not restrict CPU visibility via cgroups (common on SGE and some SLURM configurations), the JVM and the system C library both report the **full node CPU count** regardless of how many slots were allocated to the job. Simplified invocation uses `availableProcessors()` to set the thread count, which can be the full node count (e.g. 256). This causes the system memory allocator (glibc) to reserve virtual address space proportional to that CPU count (up to 8 × cores × 64 MB per arena), which can exhaust the per-job virtual memory limit (`ulimit -v`) before any reads are processed, even when the node has abundant physical RAM.
 
 The recommended fix is to combine `MALLOC_ARENA_MAX=2` (prevents the virtual memory crash) with `-XX:ActiveProcessorCount` (caps the thread count to the allocated slots):
 
@@ -62,7 +62,7 @@ The recommended fix is to combine `MALLOC_ARENA_MAX=2` (prevents the virtual mem
 | LSF       | `export MALLOC_ARENA_MAX=2`<br>`java -XX:ActiveProcessorCount=$LSB_DJOB_NUMPROC -jar Trimmomatic-0.42.jar R1.fq.gz R2.fq.gz` |
 | PBS/Torque | `export MALLOC_ARENA_MAX=2`<br>`java -XX:ActiveProcessorCount=$NCPUS -jar Trimmomatic-0.42.jar R1.fq.gz R2.fq.gz` |
 
-`MALLOC_ARENA_MAX=2` alone prevents the crash but does not fix the thread count — without `-XX:ActiveProcessorCount`, simplified invocation will still attempt to use the full node CPU count. Memory requirements with the correct thread count: ~8 GiB for single-end, ~16 GiB for paired-end on large datasets.
+`MALLOC_ARENA_MAX=2` alone prevents the crash but does not fix the thread count, without `-XX:ActiveProcessorCount`, simplified invocation will still attempt to use the full node CPU count. Memory requirements with the correct thread count: ~8 GiB for single-end, ~16 GiB for paired-end on large datasets.
 
 Alternatively, use explicit `PE`/`SE` mode with `-threads` set to the allocated slot count, which avoids both issues without needing the JVM flag.
 
@@ -72,7 +72,7 @@ Alternatively, use explicit `PE`/`SE` mode with `-threads` set to the allocated 
 
 With most new data sets you can use gentle quality trimming and adapter clipping.
 
-You often don't need leading and trailing clipping. Also in general setting the `keepBothReads` to `True` can be useful when working with paired end data, you will keep even redundant information but this likely makes your pipelines more manageable. Note the additional `:2` in front of the `True` (for `keepBothReads`) - this is the minimum adapter length in palindrome mode, you can even set this to 1. (Default is a very conservative 8)
+You often don't need leading and trailing clipping. Also in general setting the `keepBothReads` to `True` can be useful when working with paired end data, you will keep even redundant information but this likely makes your pipelines more manageable. Note the additional `:2` in front of the `True` (for `keepBothReads`). This is the minimum adapter length in palindrome mode, you can even set this to 1. (Default is a very conservative 8)
 
 If you have questions please don't hesitate to contact us, this is not necessarily one size fits all. (e.g. RNAseq expression analysis vs DNA assembly).
 
@@ -119,7 +119,7 @@ LEADING:3 TRAILING:3 SLIDINGWINDOW:4:15 MINLEN:36
 ## Trimmomatic is a de.NBI & ELIXIR Service
 
 <a href="https://denbi.de"><img src="https://www.denbi.de/templates/nbimaster/img/denbi-logo-color.svg" width="30%"></a>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="https://elixir-europe.org"><img src="https://raw.githubusercontent.com/elixir-europe/rdmkit/master/assets/img/elixir_logo_inverted.svg" width="15%"></a><br>
-This software is provided as a service by the German Network for Bioinformatics Infrastructure (de.NBI). As the German node for ELIXIR, de.NBI contributes services like this one to a pan-European infrastructure for life science data. Together, de.NBI and ELIXIR offer a coordinated portfolio of resources — including databases, software, training, and cloud computing — to make it easier for scientists in academia and industry to find and share data, exchange expertise, and establish best practices.
+This software is provided as a service by the German Network for Bioinformatics Infrastructure (de.NBI). As the German node for ELIXIR, de.NBI contributes services like this one to a pan-European infrastructure for life science data. Together, de.NBI and ELIXIR offer a coordinated portfolio of resources, including databases, software, training, and cloud computing, to make it easier for scientists in academia and industry to find and share data, exchange expertise, and establish best practices.
 
 ---
 
@@ -199,11 +199,18 @@ java -classpath <path to trimmomatic jar> org.usadellab.trimmomatic.TrimmomaticS
 * `-version`: prints the Trimmomatic version number to the console. When built from a git working tree the output includes the abbreviated commit hash and a `-dirty` suffix if uncommitted changes are present (e.g. `0.42+b49a43e`).
 * `-interleaved` *(PE only)*: treat the single input file as an interleaved FASTQ containing alternating R1 / R2 records. Only one input file is required; the four standard output files are still produced.
 * `-longread` *(SE and PE)*: skip the 10 000-record phred quality-encoding pre-read and assume Phred+33. Recommended for all ONT and PacBio inputs where the pre-read would otherwise read up to 4 MB of data unnecessarily.
-* `-technicalread <1|2>` *(PE only)*: designate one read as the **technical read** (cell barcode / UMI) that must pass through completely untouched. All trimming steps run only on the other (**biological**) read. If the biological read is dropped, both reads are discarded — the technical read **never** appears in the unpaired output file. Use `1` when R1 carries the barcode/UMI (e.g. 10x Genomics, Drop-seq), or `2` when the roles are swapped. Example:
+* `-technicalread <1|2>` *(PE only)*: designate one read as the **technical read** (cell barcode / UMI) that must pass through completely untouched. All trimming steps run only on the other (**biological**) read. If the biological read is dropped, both reads are discarded, the technical read **never** appears in the unpaired output file. Use `1` when R1 carries the barcode/UMI (e.g. 10x Genomics, Drop-seq), or `2` when the roles are swapped. Example:
   ```
   TrimmomaticPE -technicalread 1 R1.fastq.gz R2.fastq.gz \
     R1_paired.fastq.gz /dev/null R2_paired.fastq.gz R2_unpaired.fastq.gz \
     ILLUMINACLIP:adapters/TruSeq3-PE.fa:2:30:10 SLIDINGWINDOW:4:20 MINLEN:30
+  ```
+* `-pe1steps <steps>` / `-pe2steps <steps>` *(PE only, must be given together)*: run an **independent** step list on each mate instead of one shared/symmetric list. Either mate's steps dropping the read drops the **whole pair** - neither mate ever appears in the unpaired output. Generalises `-technicalread` (which only lets the biological side drop the pair) to single-cell layouts where the barcode/UMI mate itself needs a step that can fail a read, e.g. a future whitelist-correction step. Give an empty string (`""`) for a mate that should pass through untouched. Mutually exclusive with `-technicalread`, and with giving steps as the trailing step list (steps must live in one place or the other, not both). Example:
+  ```
+  TrimmomaticPE -pe1steps "UMIEXTRACT:28" \
+    -pe2steps "ILLUMINACLIP:adapters/TruSeq3-PE.fa:2:30:10 SLIDINGWINDOW:4:20 MINLEN:20" \
+    R1.fastq.gz R2.fastq.gz \
+    R1_paired.fastq.gz R1_unpaired.fastq.gz R2_paired.fastq.gz R2_unpaired.fastq.gz
   ```
 
 ---
@@ -316,13 +323,13 @@ Most steps take one or more settings, delimited by `:`.
     * `minFragLen`: (optional) fragments shorter than this after splitting are discarded [default = 100].
     * `platform`: (optional) `ONT` (default), `CLR`, or `HIFI`. `ONT` and `CLR` both enable chimera splitting; `HIFI` disables interior splitting entirely to prevent false-positive chimera calls on near-error-free PacBio HiFi reads. To compensate, `HIFI` also enables a near-terminal full-adapter scan at the 3′ end (mirroring the existing 5′ scan), so adapters followed by a few trailing bases are still detected without requiring interior scanning.
     * **Terminal clipping** removes adapter residuals from both the 5′ end (forward orientation only) and 3′ end (all orientations). Partial overlaps down to `minOverlap` are accepted because the adapter may hang off the read end.
-    * **Chimera splitting** (ONT / CLR only) scans the read interior for full-length adapter matches using 6-mer seeding and edit-distance verification. Partial interior matches are rejected — requiring the full adapter length prevents false-positive splits in high-error-rate reads. Each split fragment's ends are re-clipped immediately to remove junction residuals. Fragments are named `@readname/split1of2`, `@readname/split2of2`, etc.
+    * **Chimera splitting** (ONT / CLR only) scans the read interior for full-length adapter matches using 6-mer seeding and edit-distance verification. Partial interior matches are rejected - requiring the full adapter length prevents false-positive splits in high-error-rate reads. Each split fragment's ends are re-clipped immediately to remove junction residuals. Fragments are named `@readname/split1of2`, `@readname/split2of2`, etc.
     * Uses **edit distance** (Wagner-Fischer DP) rather than Hamming distance, correctly handling the indel-dominated error profile of ONT R9/R10 and PacBio CLR chemistries.
     * **Single-end mode only.** Raises an error if invoked in paired-end mode.
     * Recommended pipeline: `LONGREADTRIM:<fasta>:<errorRate>:<minOverlap>:<minFragLen>:<platform>  MINLEN:<length>`
-    * Example: `LONGREADTRIM:adapters/ONT-LSK114.fa:0.10:10:100:ONT` — ONT R10.4.1 / Kit 14 reads.
-    * Example: `LONGREADTRIM:adapters/PacBio-Sequel.fa:0.05:10:100:HIFI` — PacBio HiFi / CCS reads (no chimera splitting).
-    * Example: `LONGREADTRIM:adapters/PacBio-RSII.fa:0.15:10:100:CLR` — PacBio CLR reads (chimera splitting enabled).
+    * Example: `LONGREADTRIM:adapters/ONT-LSK114.fa:0.10:10:100:ONT` - ONT R10.4.1 / Kit 14 reads.
+    * Example: `LONGREADTRIM:adapters/PacBio-Sequel.fa:0.05:10:100:HIFI` - PacBio HiFi / CCS reads (no chimera splitting).
+    * Example: `LONGREADTRIM:adapters/PacBio-RSII.fa:0.15:10:100:CLR` - PacBio CLR reads (chimera splitting enabled).
     * Trimmomatic ships adapter files for the most common long-read platforms in the `adapters/` directory:
 
 | File | Platform / Chemistry | Recommended `maxErrorRate` | Recommended `platform` |
@@ -332,8 +339,8 @@ Most steps take one or more settings, delimited by `:`.
 | `adapters/ONT-LSK114.fa` | Oxford Nanopore SQK-LSK114, LSK114-24 (R10.4.1 / Kit 14) | `0.10` | `ONT` |
 | `adapters/ONT-Rapid.fa` | Oxford Nanopore RAD004, RAD114, RBK004, RBK114 (Rapid kits) | `0.15` (R9); `0.10` (R10) | `ONT` |
 | `adapters/ONT-cDNA.fa` | Oxford Nanopore SQK-PCS109, PCS114 (direct cDNA / PCR-cDNA) | `0.15` (R9); `0.10` (R10) | `ONT` |
-| `adapters/PacBio-RSII.fa` | PacBio RS II — SMRTbell adapter + C2 sequencing primer | `0.15` | `CLR` |
-| `adapters/PacBio-Sequel.fa` | PacBio Sequel, SequelII, SequelIIe, Revio, ETK2.0 — SMRTbell adapter + C2 primer | `0.05` (HiFi/CCS); `0.15` (CLR) | `HIFI` or `CLR` |
+| `adapters/PacBio-RSII.fa` | PacBio RS II - SMRTbell adapter + C2 sequencing primer | `0.15` | `CLR` |
+| `adapters/PacBio-Sequel.fa` | PacBio Sequel, SequelII, SequelIIe, Revio, ETK2.0 - SMRTbell adapter + C2 primer | `0.05` (HiFi/CCS); `0.15` (CLR) | `HIFI` or `CLR` |
 
     * **Note:** Adapter chemistry evolves with each new kit generation. For kits not listed above, consult your platform's official documentation or community-curated sources such as [Porechop](https://github.com/rrwick/Porechop/blob/master/porechop/adapters.py) (ONT) and the [PacBio SMRTbell adapter documentation](https://www.pacb.com/documentation/).
 

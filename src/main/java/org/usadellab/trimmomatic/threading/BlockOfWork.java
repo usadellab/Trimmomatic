@@ -17,6 +17,8 @@ public class BlockOfWork implements Callable<BlockOfRecords> {
 	private Logger logger;
 
 	private Trimmer trimmers[];
+	private Trimmer trimmers1[];
+	private Trimmer trimmers2[];
 	private BlockOfRecords bor;
 
 	private boolean pe;
@@ -31,14 +33,35 @@ public class BlockOfWork implements Callable<BlockOfRecords> {
 
 	public BlockOfWork(Logger logger, Trimmer trimmers[], BlockOfRecords bor, boolean last, boolean pe,
 			int technicalRead, boolean trimLog, List<Serializer> serializers, ExceptionHolder exceptionHolder) {
+		this(logger, trimmers, null, null, bor, last, pe, technicalRead, trimLog, serializers, exceptionHolder);
+	}
+
+	/**
+	 * trimmers1/trimmers2 (both non-null together, or both null) select the new
+	 * per-mate routing mode: mate 1 runs only trimmers1, mate 2 runs only
+	 * trimmers2, and either mate's steps returning null drops the whole pair —
+	 * neither mate ever goes to the unpaired output in this mode. Mutually
+	 * exclusive with technicalRead != 0 (caller's responsibility to enforce;
+	 * checked defensively in processPE()).
+	 */
+	public BlockOfWork(Logger logger, Trimmer trimmers[], Trimmer trimmers1[], Trimmer trimmers2[],
+			BlockOfRecords bor, boolean last, boolean pe, int technicalRead, boolean trimLog,
+			List<Serializer> serializers, ExceptionHolder exceptionHolder) {
 		this.logger = logger;
 
 		this.trimmers = trimmers;
+		this.trimmers1 = trimmers1;
+		this.trimmers2 = trimmers2;
 		this.bor = bor;
 
 		this.pe = pe;
 		this.technicalRead = technicalRead;
 		this.trimLog = trimLog;
+
+		if ((trimmers1 == null) != (trimmers2 == null))
+			throw new IllegalArgumentException("trimmers1 and trimmers2 must be both null or both non-null");
+		if (technicalRead != 0 && trimmers1 != null)
+			throw new IllegalArgumentException("technicalRead and trimmers1/trimmers2 (per-mate mode) are mutually exclusive");
 
 		blocks = new ArrayList<SerializedBlock>();
 
@@ -147,6 +170,47 @@ public class BlockOfWork implements Callable<BlockOfRecords> {
 				FastqRecord[] recsForStats = new FastqRecord[2];
 				recsForStats[bioIdx]  = bioResult;
 				recsForStats[techIdx] = (bioResult != null) ? techRecord : null;
+				stats.logPair(originalRecs, recsForStats);
+
+				if (trimLog) {
+					trimLogList.add(makeTrimLogRec(recsForStats[0], originalRecs[0]));
+					trimLogList.add(makeTrimLogRec(recsForStats[1], originalRecs[1]));
+				}
+			} else if (trimmers1 != null) {
+				// Per-mate mode: each mate runs its own independent step list. Either
+				// mate's steps returning null drops the whole pair — neither mate ever
+				// goes to the unpaired output (same invariant as the technicalRead
+				// branch above, generalised to let both sides fail, not just one).
+				FastqRecord[] rec1Array = { originalRecs[0] };
+				try {
+					for (int j = 0; j < trimmers1.length; j++)
+						rec1Array = trimmers1[j].processRecords(rec1Array);
+				} catch (RuntimeException e) {
+					logger.errorln("Exception processing mate 1: " + originalRecs[0].getName());
+					throw e;
+				}
+
+				FastqRecord[] rec2Array = { originalRecs[1] };
+				try {
+					for (int j = 0; j < trimmers2.length; j++)
+						rec2Array = trimmers2[j].processRecords(rec2Array);
+				} catch (RuntimeException e) {
+					logger.errorln("Exception processing mate 2: " + originalRecs[1].getName());
+					throw e;
+				}
+
+				FastqRecord rec1Result = rec1Array[0];
+				FastqRecord rec2Result = rec2Array[0];
+
+				FastqRecord[] recsForStats = new FastqRecord[2];
+				if (rec1Result != null && rec2Result != null) {
+					trimmedRecs1P.add(rec1Result);
+					trimmedRecs2P.add(rec2Result);
+					recsForStats[0] = rec1Result;
+					recsForStats[1] = rec2Result;
+				}
+				// else: either mate dropped -> both discarded, neither to unpaired.
+
 				stats.logPair(originalRecs, recsForStats);
 
 				if (trimLog) {

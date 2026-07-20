@@ -70,6 +70,20 @@ public class Trimmomatic {
 		return trimmers;
 	}
 
+	/**
+	 * Parses a single whitespace-separated step-list string (e.g. the value of
+	 * -pe1steps/-pe2steps) into a Trimmer array. An empty/blank string yields a
+	 * zero-length array (pure passthrough for that mate), matching how an empty
+	 * trailing step list behaves.
+	 */
+	static Trimmer[] createTrimmersFromString(Logger logger, String stepsStr) throws IOException {
+		if (stepsStr == null || stepsStr.trim().isEmpty())
+			return new Trimmer[0];
+
+		List<String> tokens = Arrays.asList(stepsStr.trim().split("\\s+"));
+		return createTrimmers(logger, tokens.iterator());
+	}
+
 	static String trimExtension(String filename) {
 		String extensions[] = { ".fq", ".fastq", ".txt", ".gz", ".bz2", ".zip" };
 
