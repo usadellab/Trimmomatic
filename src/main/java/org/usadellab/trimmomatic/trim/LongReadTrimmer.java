@@ -122,6 +122,9 @@ public class LongReadTrimmer implements Trimmer {
     /** Per-adapter k-mer presence tables for terminal-scan pre-filtering. */
     private boolean[][] adapterHasKmer;
     private boolean[][] fwdAdapterHasKmer;
+    /** True for adapters that contain N wildcards; filter is unsafe for those. */
+    private boolean[] adapterHasN;
+    private boolean[] fwdAdapterHasN;
     private int maxAdapterLen;
     /** Reusable DP scratch arrays; eliminates per-call int[] allocation for len > 64. */
     private ThreadLocal<int[][]> dpScratch;
@@ -218,6 +221,16 @@ public class LongReadTrimmer implements Trimmer {
                 if (code >= 0) fwdAdapterHasKmer[fi][code] = true;
             }
         }
+        adapterHasN = new boolean[adapters.size()];
+        for (int ai = 0; ai < adapters.size(); ai++)
+            for (char c : adapters.get(ai).toCharArray())
+                if (c == 'N') { adapterHasN[ai] = true; break; }
+
+        fwdAdapterHasN = new boolean[fwdAdapters.size()];
+        for (int fi = 0; fi < fwdAdapters.size(); fi++)
+            for (char c : fwdAdapters.get(fi).toCharArray())
+                if (c == 'N') { fwdAdapterHasN[fi] = true; break; }
+
         final int scratchLen = maxAdapterLen + 1;
         dpScratch = ThreadLocal.withInitial(() -> new int[][]{ new int[scratchLen], new int[scratchLen] });
     }
@@ -404,7 +417,8 @@ public class LongReadTrimmer implements Trimmer {
                                          boolean[] adapterKmers) {
         for (int rp = start; rp <= end - KMER_SIZE; rp++) {
             int code = encodeKmer(readChars, rp, KMER_SIZE);
-            if (code >= 0 && adapterKmers[code]) return true;
+            if (code < 0) return true; // N in read: wildcard, cannot rule out a match
+            if (adapterKmers[code]) return true;
         }
         return false;
     }
@@ -498,8 +512,12 @@ public class LongReadTrimmer implements Trimmer {
             int    adapterLen = adapter.length();
             int    maxOverlap = Math.min(seqLen, adapterLen);
             if (maxOverlap < minOverlap) continue;
-            // Pre-filter: skip adapter if read's 5′ overlap region shares no k-mer with it.
-            if (maxOverlap >= KMER_SIZE
+            // Pre-filter: safe only when minOverlap >= KMER_SIZE, the adapter has no N
+            // wildcards (which leave gaps in the k-mer table), and the overlap is large
+            // enough that errors cannot destroy every possible shared k-mer.
+            // Reliability condition: (minOverlap - KMER_SIZE + 1) > floor(minOverlap * maxErrorRate) * KMER_SIZE
+            if (!fwdAdapterHasN[fi] && minOverlap >= KMER_SIZE
+                    && (minOverlap - KMER_SIZE + 1) > (int)(minOverlap * maxErrorRate) * KMER_SIZE
                     && !hasSharedKmer(readChars, 0, maxOverlap, fwdAdapterHasKmer[fi]))
                 continue;
 
@@ -522,10 +540,11 @@ public class LongReadTrimmer implements Trimmer {
             int    maxStart   = Math.min(minOverlap, seqLen - adapterLen - minOverlap);
             if (maxStart < 0) continue;
             int filterEnd = Math.min(seqLen, minOverlap + adapterLen);
-            if (filterEnd >= KMER_SIZE
+            int allowedEdits = (int) (adapterLen * maxErrorRate);
+            if (!adapterHasN[ai] && adapterLen >= KMER_SIZE
+                    && (adapterLen - KMER_SIZE + 1) > allowedEdits * KMER_SIZE
                     && !hasSharedKmer(readChars, 0, filterEnd, adapterHasKmer[ai]))
                 continue;
-            int allowedEdits = (int) (adapterLen * maxErrorRate);
             for (int s = 0; s <= maxStart; s++) {
                 if (editDistance(seq, s, adapter, 0, adapterLen, allowedEdits)
                         <= allowedEdits) {
@@ -567,8 +586,9 @@ public class LongReadTrimmer implements Trimmer {
             int    maxOverlap = Math.min(seqLen, adapterLen);
             if (maxOverlap < minOverlap) continue;
             int filterStart = seqLen - maxOverlap;
-            // Pre-filter: skip adapter if read's 3′ overlap region shares no k-mer with it.
-            if (maxOverlap >= KMER_SIZE
+            // Pre-filter: same safety conditions as the 5′ scan (see findFivePrimeClip).
+            if (!adapterHasN[ai] && minOverlap >= KMER_SIZE
+                    && (minOverlap - KMER_SIZE + 1) > (int)(minOverlap * maxErrorRate) * KMER_SIZE
                     && !hasSharedKmer(readChars, filterStart, seqLen, adapterHasKmer[ai]))
                 continue;
 
@@ -593,10 +613,11 @@ public class LongReadTrimmer implements Trimmer {
                 int    maxStart   = seqLen - adapterLen;
                 if (minStart > maxStart) continue;
                 int filterEnd = Math.min(seqLen, maxStart + adapterLen);
-                if (filterEnd - minStart >= KMER_SIZE
+                int allowedEdits = (int) (adapterLen * maxErrorRate);
+                if (!adapterHasN[ai] && adapterLen >= KMER_SIZE
+                        && (adapterLen - KMER_SIZE + 1) > allowedEdits * KMER_SIZE
                         && !hasSharedKmer(readChars, minStart, filterEnd, adapterHasKmer[ai]))
                     continue;
-                int allowedEdits = (int) (adapterLen * maxErrorRate);
                 for (int s = minStart; s <= maxStart; s++) {
                     if (s >= trimTo) break;
                     if (editDistance(seq, s, adapter, 0, adapterLen, allowedEdits)
