@@ -242,6 +242,7 @@ The current trimming steps are:
 * `UMIEXTRACT`: Extract a UMI from the 5' end and append it to the read name.
 * `UMISPLIT`: Extract a cell barcode and UMI (two separate lengths) from the 5' end and append both to the read name.
 * `BARCODECORRECT`: Whitelist-correct a cell barcode against a known-good list, then append the corrected barcode and raw UMI to the read name.
+* `BDRHAPSODYCORRECT`: Whitelist-correct BD Rhapsody's three combinatorial cell label segments, then append the combined barcode and raw UMI to the read name.
 * `MAXAMBIG`: Drop the read if the fraction of N bases exceeds a maximum.
 * `LONGREADTRIM`: Unified long-read adapter trimmer. Clips terminal adapter residuals (5′ and 3′) and splits chimeric reads at internal adapter junctions in a single step, using edit distance (indel-aware) and k-mer seeding. A platform hint (`ONT`, `CLR`, `HIFI`) controls chimera splitting behaviour. **Single-end mode only.**
 * `TOPHRED33`: Convert quality scores to Phred-33.
@@ -308,7 +309,7 @@ Most steps take one or more settings, delimited by `:`.
     * Recommended values: `1.5` to aggressively drop di-nucleotide repeats (e.g. ATAT…); `1.0` to retain them while still dropping homopolymers; `0.5` for a very lenient filter.
     * Example: `LOWCOMPLEXITY:1.0`
 
-**Name-tagging steps and mate synchronisation:** `UMIEXTRACT`, `UMISPLIT`, and `BARCODECORRECT` (below) all work by appending a tag to a read's name. When run via `-pe1steps`/`-pe2steps`, whichever tag ends up on the mate you tagged is automatically **mirrored onto the other mate's name too** (both keep their own original name, but gain the identical tag suffix). This matters because the tagged mate is usually the purely-technical one discarded before alignment (e.g. 10x R1) - only the biological mate (R2) survives into a BAM, so a tag living only on the discarded mate's name would be invisible to anything downstream reading it back out of the aligned BAM's QNAME (`umi_tools dedup`/`count` and similar). This matches `umi_tools extract`'s own convention of writing the tag onto both mates.
+**Name-tagging steps and mate synchronisation:** `UMIEXTRACT`, `UMISPLIT`, `BARCODECORRECT`, and `BDRHAPSODYCORRECT` (below) all work by appending a tag to a read's name. When run via `-pe1steps`/`-pe2steps`, whichever tag ends up on the mate you tagged is automatically **mirrored onto the other mate's name too** (both keep their own original name, but gain the identical tag suffix). This matters because the tagged mate is usually the purely-technical one discarded before alignment (e.g. 10x R1) - only the biological mate (R2) survives into a BAM, so a tag living only on the discarded mate's name would be invisible to anything downstream reading it back out of the aligned BAM's QNAME (`umi_tools dedup`/`count` and similar). This matches `umi_tools extract`'s own convention of writing the tag onto both mates.
 
 * `UMIEXTRACT:<length>[:<separator>]`
     * `length`: the number of bases to extract from the 5' end as the UMI.
@@ -333,6 +334,15 @@ Most steps take one or more settings, delimited by `:`.
     * This is a plain Hamming-distance correction, not the quality- and abundance-weighted Bayesian posterior Cell Ranger's own algorithm uses - expect the same ballpark, not bit-identical numbers. The UMI is never corrected here; real UMI correction needs reads grouped by (cell, gene) after alignment, which a pre-alignment trimmer doesn't have.
     * Same length/payload behaviour as `UMISPLIT`: a read exactly `cbLength + umiLength` bases survives with a zero-length sequence.
     * Example: `BARCODECORRECT:3M-february-2018.txt.gz:16:12:1` for 10x Chromium 3' v3.
+
+* `BDRHAPSODYCORRECT:<whitelistDir>:<maxMismatch>[:<separator>]`
+    * Purpose-built for BD Rhapsody's combinatorial cell label instead of a droplet platform's single flat barcode. R1 (0-indexed) is `CLS1(0-9) - L1(9-21, fixed linker) - CLS2(21-30) - L2(30-43, fixed linker) - CLS3(43-52) - UMI(52-60) - poly-T carryover`; each CLS segment is one of 96 known sequences.
+    * `whitelistDir`: path to a directory containing `CLS1.txt`, `CLS2.txt`, `CLS3.txt` (one sequence per line, plain text, 96 entries each for BD Rhapsody V1 - unlike `BARCODECORRECT`'s whitelist, these are small enough that compressed-format support isn't worthwhile). A single directory argument is used instead of three separate file paths, since three colon-delimited Windows paths in one argument can't be parsed back apart from each other. BD's own cell label codebook has no confirmed redistribution license, so it isn't bundled with Trimmomatic - obtain it from BD Biosciences and point this at a directory containing it.
+    * `maxMismatch`: same meaning as `BARCODECORRECT` (`0` or `1`), applied independently to each of the three CLS segments.
+    * A single cumulative offset is derived from CLS2 (checked at its nominal position, then ±1, then ±2 - this catches any indel anywhere before CLS2, in CLS1 or the L1 linker) and applied to CLS3 and the UMI as well, rather than re-deriving it a second time at L2. This was checked empirically against real BD Rhapsody data: re-deriving the offset at L2 resolved under 1% of the cases where the CLS2-derived offset didn't place L2 exactly, and moved the CLS3 whitelist-hit rate by under 0.2 percentage points - the other ~99% of L2 mismatches are ordinary substitution noise on a 13bp window, not a second indel, and no offset search can fix a substitution. CLS1 is always read at its fixed nominal position, since nothing precedes it to derive an offset from.
+    * The corrected `CLS1+CLS2+CLS3` (27bp combined cell barcode) and the raw (uncorrected) 8bp UMI are appended to the read name as bare sequences, `<separator><27bp barcode><separator><8bp UMI>` - same `umi_tools`-compatible convention as `UMISPLIT`/`BARCODECORRECT` - and removed from the sequence (any remaining poly-T carryover survives as the new sequence).
+    * A read is dropped if shorter than 60bp, or if any of the three CLS segments has no confident whitelist match within `maxMismatch` at its derived position.
+    * Example: `BDRHAPSODYCORRECT:whitelists/rhapsody_v1:1`
 
 * `MAXAMBIG:<maxFraction>`
     * `maxFraction`: the maximum allowed fraction of N bases in the read (0.0–1.0). Reads exceeding this fraction are dropped.

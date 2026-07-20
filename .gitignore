@@ -3,3 +3,4 @@
 .claudeignore
 CLAUDE.md
 .claude/
+/benchmark/
