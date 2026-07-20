@@ -79,6 +79,20 @@ public class BlockOfWork implements Callable<BlockOfRecords> {
 		return blocks;
 	}
 
+	/**
+	 * Returns whatever a per-mate step list appended to a record's name (empty
+	 * string if the name is unchanged). Detected as a plain prefix check since
+	 * every name-tagging trimmer (BARCODECORRECT, UMISPLIT, UMIEXTRACT) only
+	 * ever appends to the existing name, never replaces it.
+	 */
+	private static String appendedNameSuffix(FastqRecord original, FastqRecord result) {
+		String originalName = original.getName();
+		String resultName = result.getName();
+		if (resultName.length() > originalName.length() && resultName.startsWith(originalName))
+			return resultName.substring(originalName.length());
+		return "";
+	}
+
 	private TrimLogRecord makeTrimLogRec(FastqRecord rec, FastqRecord originalRec) {
 		int length = 0;
 		int startPos = 0;
@@ -204,6 +218,32 @@ public class BlockOfWork implements Callable<BlockOfRecords> {
 
 				FastqRecord[] recsForStats = new FastqRecord[2];
 				if (rec1Result != null && rec2Result != null) {
+					// If either mate's step list appended a tag to its name (BARCODECORRECT,
+					// UMISPLIT, UMIEXTRACT all work by appending, never replacing), mirror
+					// that same tag onto the OTHER mate's name too. Only the mate the tag
+					// was extracted from is usually the one discarded before alignment (the
+					// pure-technical read, e.g. 10x R1); the mate that actually gets aligned
+					// is the only one whose name survives into a BAM's QNAME, so a tag that
+					// lives on just one mate is invisible to anything downstream that reads
+					// it back out post-alignment (umi_tools dedup/count and similar). This
+					// matches umi_tools' own extract convention of writing the tag onto both
+					// mates' names, not just the one it came from.
+					String suffix1 = appendedNameSuffix(originalRecs[0], rec1Result);
+					String suffix2 = appendedNameSuffix(originalRecs[1], rec2Result);
+
+					if (!suffix1.isEmpty() && suffix2.isEmpty()) {
+						rec2Result = new FastqRecord(rec2Result, 0, rec2Result.getLength(), rec2Result.getName() + suffix1);
+					} else if (!suffix2.isEmpty() && suffix1.isEmpty()) {
+						rec1Result = new FastqRecord(rec1Result, 0, rec1Result.getLength(), rec1Result.getName() + suffix2);
+					} else if (!suffix1.isEmpty() && !suffix2.isEmpty()) {
+						// Both sides tagged independently -- give both the union of the two
+						// tags rather than silently dropping one, so they still end up
+						// matching each other exactly.
+						String combined = suffix1 + suffix2;
+						rec1Result = new FastqRecord(rec1Result, 0, rec1Result.getLength(), originalRecs[0].getName() + combined);
+						rec2Result = new FastqRecord(rec2Result, 0, rec2Result.getLength(), originalRecs[1].getName() + combined);
+					}
+
 					trimmedRecs1P.add(rec1Result);
 					trimmedRecs2P.add(rec2Result);
 					recsForStats[0] = rec1Result;

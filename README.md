@@ -308,6 +308,8 @@ Most steps take one or more settings, delimited by `:`.
     * Recommended values: `1.5` to aggressively drop di-nucleotide repeats (e.g. ATAT…); `1.0` to retain them while still dropping homopolymers; `0.5` for a very lenient filter.
     * Example: `LOWCOMPLEXITY:1.0`
 
+**Name-tagging steps and mate synchronisation:** `UMIEXTRACT`, `UMISPLIT`, and `BARCODECORRECT` (below) all work by appending a tag to a read's name. When run via `-pe1steps`/`-pe2steps`, whichever tag ends up on the mate you tagged is automatically **mirrored onto the other mate's name too** (both keep their own original name, but gain the identical tag suffix). This matters because the tagged mate is usually the purely-technical one discarded before alignment (e.g. 10x R1) - only the biological mate (R2) survives into a BAM, so a tag living only on the discarded mate's name would be invisible to anything downstream reading it back out of the aligned BAM's QNAME (`umi_tools dedup`/`count` and similar). This matches `umi_tools extract`'s own convention of writing the tag onto both mates.
+
 * `UMIEXTRACT:<length>[:<separator>]`
     * `length`: the number of bases to extract from the 5' end as the UMI.
     * `separator`: (optional) the string used to separate the original read name and the UMI tag [default = `_`].
