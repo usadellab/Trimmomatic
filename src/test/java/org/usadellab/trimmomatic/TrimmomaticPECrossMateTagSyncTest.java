@@ -91,8 +91,8 @@ public class TrimmomaticPECrossMateTagSyncTest {
         assertEquals(1, r1Names.size());
         assertEquals(1, r2Names.size());
 
-        assertEquals("p1/1_CB:AAAA_UMI:CCCC", r1Names.get(0), "mate 1 keeps its own tagged name");
-        assertEquals("p1/2_CB:AAAA_UMI:CCCC", r2Names.get(0),
+        assertEquals("p1/1_AAAA_CCCC", r1Names.get(0), "mate 1 keeps its own tagged name");
+        assertEquals("p1/2_AAAA_CCCC", r2Names.get(0),
                 "mate 2 must have the SAME tag mirrored onto its own (otherwise-untouched) name");
     }
 

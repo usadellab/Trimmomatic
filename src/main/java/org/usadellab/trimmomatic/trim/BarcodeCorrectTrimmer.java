@@ -41,7 +41,11 @@ import org.usadellab.trimmomatic.util.compression.CompressionFormat;
  * zero-length sequence; it is dropped only if shorter than that.
  *
  * The read is renamed as:
- *   @original_name<separator>CB:<correctedBases><separator>UMI:<rawBases>
+ *   @original_name<separator><corrected CB bases><separator><raw UMI bases>
+ * -- bare sequences, no "CB:"/"UMI:" labels, matching umi_tools extract's own
+ * convention so umi_tools dedup/count's default read-name parser (last
+ * underscore-delimited, expects a bare nucleotide string) can consume this
+ * directly.
  *
  * UMI is never corrected here -- real UMI correction needs reads grouped by
  * (cell, gene) after alignment, which a pre-alignment trimmer doesn't have.
@@ -160,7 +164,8 @@ public class BarcodeCorrectTrimmer extends AbstractSingleRecordTrimmer {
         if (correctedCb == null)
             return null; // no confident whitelist match within maxMismatch
 
-        String newName = in.getName() + separator + "CB:" + correctedCb + separator + "UMI:" + umi;
+        // Bare sequences, no "CB:"/"UMI:" labels -- see class javadoc.
+        String newName = in.getName() + separator + correctedCb + separator + umi;
         return new FastqRecord(in, totalLength, len - totalLength, newName);
     }
 

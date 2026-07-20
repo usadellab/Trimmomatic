@@ -26,7 +26,7 @@ public class UmiSplitTrimmerTest {
         FastqRecord result = trimmer.processRecord(rec);
 
         assertNotNull(result);
-        assertEquals("read1_CB:" + cb + "_UMI:" + umi, result.getName());
+        assertEquals("read1_" + cb + "_" + umi, result.getName());
         assertEquals(payload, result.getSequence());
     }
 
@@ -38,7 +38,7 @@ public class UmiSplitTrimmerTest {
         FastqRecord result = trimmer.processRecord(rec);
 
         assertNotNull(result);
-        assertEquals("r1__CB:AAAA__UMI:CCCC", result.getName());
+        assertEquals("r1__AAAA__CCCC", result.getName());
         assertEquals("TTTT", result.getSequence());
     }
 
@@ -51,7 +51,7 @@ public class UmiSplitTrimmerTest {
         FastqRecord result = trimmer.processRecord(rec);
 
         assertNotNull(result);
-        assertEquals("r1_CB:AAAA_UMI:CCCC", result.getName());
+        assertEquals("r1_AAAA_CCCC", result.getName());
         assertEquals("", result.getSequence());
         assertEquals(0, result.getLength());
     }

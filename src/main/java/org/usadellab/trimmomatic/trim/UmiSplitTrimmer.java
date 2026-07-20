@@ -21,10 +21,14 @@ import org.usadellab.trimmomatic.fastq.FastqRecord;
  *
  * Does not whitelist-correct the barcode -- see BARCODECORRECT for that.
  *
- * The read is renamed as: @original_name<separator>CB:<bases><separator>UMI:<bases>
+ * The read is renamed as: @original_name<separator><CB bases><separator><UMI bases>
+ * -- bare sequences, no "CB:"/"UMI:" labels, matching umi_tools extract's own
+ * convention so umi_tools dedup/count's default read-name parser (last
+ * underscore-delimited, expects a bare nucleotide string) can consume this
+ * directly.
  *
  * Examples:
- *   UMISPLIT:16:12       - 16bp CB + 12bp UMI, appended as _CB:...._UMI:....
+ *   UMISPLIT:16:12       - 16bp CB + 12bp UMI, appended as _<16bp>_<12bp>
  *   UMISPLIT:12:8:__     - 12bp CB + 8bp UMI (Drop-seq style), __ as separator
  */
 public class UmiSplitTrimmer extends AbstractSingleRecordTrimmer {
@@ -73,7 +77,11 @@ public class UmiSplitTrimmer extends AbstractSingleRecordTrimmer {
         String seq = in.getSequence();
         String cb = seq.substring(0, cbLength);
         String umi = seq.substring(cbLength, totalLength);
-        String newName = in.getName() + separator + "CB:" + cb + separator + "UMI:" + umi;
+        // Bare sequences, no "CB:"/"UMI:" labels -- matches umi_tools extract's own
+        // convention (@ReadName_BARCODE_UMI) so umi_tools dedup/count's default
+        // read-name parser (last-underscore-delimited, expects a bare nucleotide
+        // string) can consume this directly without a label getting in the way.
+        String newName = in.getName() + separator + cb + separator + umi;
 
         return new FastqRecord(in, totalLength, len - totalLength, newName);
     }

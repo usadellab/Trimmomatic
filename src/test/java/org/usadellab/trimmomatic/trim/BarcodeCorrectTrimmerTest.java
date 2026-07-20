@@ -53,7 +53,7 @@ public class BarcodeCorrectTrimmerTest {
         FastqRecord result = trimmer.processRecord(rec);
 
         assertNotNull(result);
-        assertEquals("r1_CB:AAAACCCCGGGGTTTT_UMI:UMIUMIUM", result.getName());
+        assertEquals("r1_AAAACCCCGGGGTTTT_UMIUMIUM", result.getName());
         assertEquals("PAYLOAD1", result.getSequence());
     }
 
@@ -71,7 +71,7 @@ public class BarcodeCorrectTrimmerTest {
         FastqRecord result = trimmer.processRecord(rec);
 
         assertNotNull(result);
-        assertEquals("r1_CB:AAAACCCCGGGGTTTT_UMI:UMIUMIUM", result.getName(),
+        assertEquals("r1_AAAACCCCGGGGTTTT_UMIUMIUM", result.getName(),
                 "corrected CB in the name must be the WHITELIST entry, not the raw sequence");
     }
 
@@ -85,7 +85,7 @@ public class BarcodeCorrectTrimmerTest {
         FastqRecord result = trimmer.processRecord(rec);
 
         assertNotNull(result);
-        assertEquals("r1_CB:AAAACCCCGGGGTTTT_UMI:UMIUMIUM", result.getName());
+        assertEquals("r1_AAAACCCCGGGGTTTT_UMIUMIUM", result.getName());
     }
 
     // ------------------------------------------------------------------
