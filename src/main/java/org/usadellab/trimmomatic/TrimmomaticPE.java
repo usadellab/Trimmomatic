@@ -153,6 +153,13 @@ public class TrimmomaticPE extends Trimmomatic {
 					logCollector.put(future);
 			}
 
+			// statsCollector merges each block's stats asynchronously on its own
+			// background thread (SelfThreadedTrimStatsCollector, used when threads > 1).
+			// Reading .getStats() without first waiting for that thread to finish
+			// draining races the merge -- for a fast-to-read input the main thread can
+			// win and log/write an undercount despite the FASTQ output itself being
+			// complete and correct. close() waits for the thread to finish first.
+			statsCollector.close();
 			logger.infoln(statsCollector.getStats().processStatsPE(statsSummary));
 
 			if (verbose) {
