@@ -77,6 +77,12 @@ public class TrimmerFactory {
 		if (trimmerName.equals("UMIEXTRACT"))
 			return new UmiExtractTrimmer(args);
 
+		if (trimmerName.equals("UMISPLIT"))
+			return new UmiSplitTrimmer(args);
+
+		if (trimmerName.equals("BARCODECORRECT"))
+			return new BarcodeCorrectTrimmer(args);
+
 		if (trimmerName.equals("LONGREADTRIM"))
 			return new LongReadTrimmer(args);
 

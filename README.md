@@ -205,7 +205,7 @@ java -classpath <path to trimmomatic jar> org.usadellab.trimmomatic.TrimmomaticS
     R1_paired.fastq.gz /dev/null R2_paired.fastq.gz R2_unpaired.fastq.gz \
     ILLUMINACLIP:adapters/TruSeq3-PE.fa:2:30:10 SLIDINGWINDOW:4:20 MINLEN:30
   ```
-* `-pe1steps <steps>` / `-pe2steps <steps>` *(PE only, must be given together)*: run an **independent** step list on each mate instead of one shared/symmetric list. Either mate's steps dropping the read drops the **whole pair** - neither mate ever appears in the unpaired output. Generalises `-technicalread` (which only lets the biological side drop the pair) to single-cell layouts where the barcode/UMI mate itself needs a step that can fail a read, e.g. a future whitelist-correction step. Give an empty string (`""`) for a mate that should pass through untouched. Mutually exclusive with `-technicalread`, and with giving steps as the trailing step list (steps must live in one place or the other, not both). Example:
+* `-pe1steps <steps>` / `-pe2steps <steps>` *(PE only, must be given together)*: run an **independent** step list on each mate instead of one shared/symmetric list. Either mate's steps dropping the read drops the **whole pair** - neither mate ever appears in the unpaired output. Generalises `-technicalread` (which only lets the biological side drop the pair) to single-cell layouts where the barcode/UMI mate itself needs a step that can fail a read, e.g. `BARCODECORRECT`. Give an empty string (`""`) for a mate that should pass through untouched. Mutually exclusive with `-technicalread`, and with giving steps as the trailing step list (steps must live in one place or the other, not both). Example:
   ```
   TrimmomaticPE -pe1steps "UMIEXTRACT:28" \
     -pe2steps "ILLUMINACLIP:adapters/TruSeq3-PE.fa:2:30:10 SLIDINGWINDOW:4:20 MINLEN:20" \
@@ -240,6 +240,8 @@ The current trimming steps are:
 * `POLYX`: Trim a homopolymer run from the 3' end; drop the read if it consists entirely of that base.
 * `LOWCOMPLEXITY`: Drop the read if its Shannon entropy (over A/C/G/T frequencies, N excluded) is below a minimum.
 * `UMIEXTRACT`: Extract a UMI from the 5' end and append it to the read name.
+* `UMISPLIT`: Extract a cell barcode and UMI (two separate lengths) from the 5' end and append both to the read name.
+* `BARCODECORRECT`: Whitelist-correct a cell barcode against a known-good list, then append the corrected barcode and raw UMI to the read name.
 * `MAXAMBIG`: Drop the read if the fraction of N bases exceeds a maximum.
 * `LONGREADTRIM`: Unified long-read adapter trimmer. Clips terminal adapter residuals (5′ and 3′) and splits chimeric reads at internal adapter junctions in a single step, using edit distance (indel-aware) and k-mer seeding. A platform hint (`ONT`, `CLR`, `HIFI`) controls chimera splitting behaviour. **Single-end mode only.**
 * `TOPHRED33`: Convert quality scores to Phred-33.
@@ -311,6 +313,24 @@ Most steps take one or more settings, delimited by `:`.
     * `separator`: (optional) the string used to separate the original read name and the UMI tag [default = `_`].
     * The extracted UMI is appended to the read name as `<separator>UMI:<bases>` and removed from the sequence. For paired-end single-cell protocols (10x Genomics, Drop-seq), apply only to R1.
     * Example: `UMIEXTRACT:12` → name becomes `@readname_UMI:ACGTACGTACGT`; `UMIEXTRACT:10:__` uses `__` as separator.
+    * Requires the read to have at least 1 base of payload left after the UMI is removed; a read that is exactly `length` bases is dropped. For a droplet platform's fully technical read (e.g. 10x Chromium R1, 100% barcode+UMI, no payload at all), use `UMISPLIT` instead.
+
+* `UMISPLIT:<cbLength>:<umiLength>[:<separator>]`
+    * `cbLength`: the number of bases to extract from the 5' end as the cell barcode.
+    * `umiLength`: the number of bases to extract immediately after the cell barcode as the UMI.
+    * `separator`: (optional) the string used to separate the read name and each tag [default = `_`].
+    * Both are appended to the read name as `<separator>CB:<bases><separator>UMI:<bases>` and removed from the sequence. A distinct step from `UMIEXTRACT` rather than an overloaded 2-arg form of it, since `UMIEXTRACT:<length>:<separator>` already uses a 2nd colon-arg for the separator string. Does not whitelist-correct the barcode; see `BARCODECORRECT` for that.
+    * Unlike `UMIEXTRACT`, no leftover payload is required: a read that is exactly `cbLength + umiLength` bases survives with a zero-length sequence, and is dropped only if shorter than that.
+    * Example: `UMISPLIT:16:12` for 10x Chromium 3' v3 (16bp CB + 12bp UMI); `UMISPLIT:12:8` for classic Drop-seq (12bp CB + 8bp UMI).
+
+* `BARCODECORRECT:<whitelistFile>:<cbLength>:<umiLength>:<maxMismatch>[:<separator>]`
+    * `whitelistFile`: path to a file of known-good barcodes, one per line, plain text or `.gz`/`.bz2`/`.zip`. May contain colons (e.g. a Windows drive letter) - parsed from the right, so this is safe.
+    * `cbLength`, `umiLength`: as in `UMISPLIT`.
+    * `maxMismatch`: `0` (exact match only) or `1` (also accept a single-substitution match against the whitelist, first hit wins). Values above `1` are rejected - the neighbourhood size grows combinatorially and isn't worth it for a plain Hamming correction.
+    * Combines whitelist correction and header extraction in one step for droplet single-cell platforms where the two always happen together: the barcode is corrected against the whitelist first (dropping the read if no confident match within `maxMismatch`), then the **corrected** barcode and the **raw** UMI are appended to the read name as `<separator>CB:<correctedBases><separator>UMI:<rawBases>` and removed from the sequence.
+    * This is a plain Hamming-distance correction, not the quality- and abundance-weighted Bayesian posterior Cell Ranger's own algorithm uses - expect the same ballpark, not bit-identical numbers. The UMI is never corrected here; real UMI correction needs reads grouped by (cell, gene) after alignment, which a pre-alignment trimmer doesn't have.
+    * Same length/payload behaviour as `UMISPLIT`: a read exactly `cbLength + umiLength` bases survives with a zero-length sequence.
+    * Example: `BARCODECORRECT:3M-february-2018.txt.gz:16:12:1` for 10x Chromium 3' v3.
 
 * `MAXAMBIG:<maxFraction>`
     * `maxFraction`: the maximum allowed fraction of N bases in the read (0.0–1.0). Reads exceeding this fraction are dropped.
