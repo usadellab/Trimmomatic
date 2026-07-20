@@ -119,6 +119,13 @@ public class LongReadTrimmer implements Trimmer {
     private final int      minFragLen;
     private final Platform platform;
 
+    /** Per-adapter k-mer presence tables for terminal-scan pre-filtering. */
+    private boolean[][] adapterHasKmer;
+    private boolean[][] fwdAdapterHasKmer;
+    private int maxAdapterLen;
+    /** Reusable DP scratch arrays; eliminates per-call int[] allocation for len > 64. */
+    private ThreadLocal<int[][]> dpScratch;
+
     // -----------------------------------------------------------------------
     // Construction
 
@@ -190,6 +197,29 @@ public class LongReadTrimmer implements Trimmer {
         if (adapters.isEmpty())
             throw new IllegalArgumentException(
                     "LONGREADTRIM: no adapter sequences found in " + pathBuilder);
+
+        // Build per-adapter k-mer presence tables for terminal pre-filtering.
+        maxAdapterLen = 0;
+        for (String a : adapters) maxAdapterLen = Math.max(maxAdapterLen, a.length());
+
+        adapterHasKmer = new boolean[adapters.size()][KMER_TABLE_SIZE];
+        for (int ai = 0; ai < adapters.size(); ai++) {
+            char[] chars = adapters.get(ai).toCharArray();
+            for (int pos = 0; pos <= chars.length - KMER_SIZE; pos++) {
+                int code = encodeKmer(chars, pos, KMER_SIZE);
+                if (code >= 0) adapterHasKmer[ai][code] = true;
+            }
+        }
+        fwdAdapterHasKmer = new boolean[fwdAdapters.size()][KMER_TABLE_SIZE];
+        for (int fi = 0; fi < fwdAdapters.size(); fi++) {
+            char[] chars = fwdAdapters.get(fi).toCharArray();
+            for (int pos = 0; pos <= chars.length - KMER_SIZE; pos++) {
+                int code = encodeKmer(chars, pos, KMER_SIZE);
+                if (code >= 0) fwdAdapterHasKmer[fi][code] = true;
+            }
+        }
+        final int scratchLen = maxAdapterLen + 1;
+        dpScratch = ThreadLocal.withInitial(() -> new int[][]{ new int[scratchLen], new int[scratchLen] });
     }
 
     // -----------------------------------------------------------------------
@@ -280,16 +310,73 @@ public class LongReadTrimmer implements Trimmer {
     // -----------------------------------------------------------------------
     // Edit distance
     //
-    // Full Wagner-Fischer DP on equal-length substrings.  N bases are wildcards
-    // (zero substitution cost).  Returns min(distance, maxEdits+1).
+    // Dispatch: Myers' bit-parallel O(n) for len ≤ 64; DP fallback for len > 64.
+    // N bases are wildcards (zero substitution cost in DP; treated as match-all in BP).
+    // Returns min(distance, maxEdits+1).
 
-    private static int editDistance(String s, int sOff,
-                                    String t, int tOff,
-                                    int len, int maxEdits) {
+    private int editDistance(String s, int sOff,
+                             String t, int tOff,
+                             int len, int maxEdits) {
         if (len == 0) return 0;
+        if (len <= 64) return editDistanceBP(s, sOff, t, tOff, len, maxEdits);
+        return editDistanceDP(s, sOff, t, tOff, len, maxEdits, dpScratch.get());
+    }
 
-        int[] prev = new int[len + 1];
-        int[] curr = new int[len + 1];
+    /**
+     * Myers' bit-parallel edit distance for len ≤ 64.
+     * Encodes the pattern (s) into four 64-bit bitmasks (one per base); each text
+     * character (t) selects its mask.  N in either string is treated as a wildcard
+     * by setting all four bits for that position.
+     */
+    private static int editDistanceBP(String s, int sOff,
+                                      String t, int tOff,
+                                      int len, int maxEdits) {
+        long peqA = 0L, peqC = 0L, peqG = 0L, peqT = 0L;
+        for (int j = 0; j < len; j++) {
+            long bit = 1L << j;
+            switch (s.charAt(sOff + j)) {
+                case 'A' -> peqA |= bit;
+                case 'C' -> peqC |= bit;
+                case 'G' -> peqG |= bit;
+                case 'T' -> peqT |= bit;
+                default  -> { peqA |= bit; peqC |= bit; peqG |= bit; peqT |= bit; }
+            }
+        }
+        long allOnes = (len == 64) ? -1L : (1L << len) - 1L;
+        long Pv = allOnes, Mv = 0L;
+        int score = len;
+        for (int i = 0; i < len; i++) {
+            long Eq = switch (t.charAt(tOff + i)) {
+                case 'A' -> peqA;
+                case 'C' -> peqC;
+                case 'G' -> peqG;
+                case 'T' -> peqT;
+                default  -> allOnes; // N: wildcard
+            };
+            long Xv  = Eq | Mv;
+            long Ph, Mh;
+            long sum  = ((Eq & Pv) + Pv) & allOnes;
+            long Xh   = (sum ^ Pv) | Eq;
+            Ph   = Mv | (~(Xh | Pv) & allOnes);
+            Mh   = Pv & Xh;
+            long highBit = 1L << (len - 1);
+            if ((Ph & highBit) != 0L) score++;
+            if ((Mh & highBit) != 0L) score--;
+            Ph = ((Ph << 1) | 1L) & allOnes;
+            Mv = Ph & Xv;
+            Pv = ((Mh << 1) | ~(Xv | Ph)) & allOnes;
+            if (score - (len - 1 - i) > maxEdits) return maxEdits + 1;
+        }
+        return Math.min(score, maxEdits + 1);
+    }
+
+    /** Wagner-Fischer DP fallback for len > 64, reusing caller-supplied scratch arrays. */
+    private static int editDistanceDP(String s, int sOff,
+                                      String t, int tOff,
+                                      int len, int maxEdits,
+                                      int[][] scratch) {
+        int[] prev = scratch[0];
+        int[] curr = scratch[1];
         for (int j = 0; j <= len; j++) prev[j] = j;
 
         for (int i = 1; i <= len; i++) {
@@ -310,6 +397,16 @@ public class LongReadTrimmer implements Trimmer {
             int[] tmp = prev; prev = curr; curr = tmp;
         }
         return Math.min(prev[len], maxEdits + 1);
+    }
+
+    /** Returns true if any 6-mer from readChars[start..end) exists in adapterKmers. */
+    private static boolean hasSharedKmer(char[] readChars, int start, int end,
+                                         boolean[] adapterKmers) {
+        for (int rp = start; rp <= end - KMER_SIZE; rp++) {
+            int code = encodeKmer(readChars, rp, KMER_SIZE);
+            if (code >= 0 && adapterKmers[code]) return true;
+        }
+        return false;
     }
 
     // -----------------------------------------------------------------------
@@ -392,13 +489,19 @@ public class LongReadTrimmer implements Trimmer {
      * </ol>
      */
     private int findFivePrimeClip(String seq, int seqLen) {
-        int clipFrom = 0;
+        int    clipFrom  = 0;
+        char[] readChars = seq.toCharArray();
 
         // Suffix scan: adapter hangs off the 5′ end (forward adapters only).
-        for (String adapter : fwdAdapters) {
-            int adapterLen = adapter.length();
-            int maxOverlap = Math.min(seqLen, adapterLen);
+        for (int fi = 0; fi < fwdAdapters.size(); fi++) {
+            String adapter    = fwdAdapters.get(fi);
+            int    adapterLen = adapter.length();
+            int    maxOverlap = Math.min(seqLen, adapterLen);
             if (maxOverlap < minOverlap) continue;
+            // Pre-filter: skip adapter if read's 5′ overlap region shares no k-mer with it.
+            if (maxOverlap >= KMER_SIZE
+                    && !hasSharedKmer(readChars, 0, maxOverlap, fwdAdapterHasKmer[fi]))
+                continue;
 
             for (int overlap = maxOverlap; overlap >= minOverlap; overlap--) {
                 if (overlap <= clipFrom) break;
@@ -413,15 +516,15 @@ public class LongReadTrimmer implements Trimmer {
         }
 
         // Near-terminal full-adapter scan: full adapter starting at positions 0..minOverlap.
-        // Covers pore-entry artifact bases that precede the adapter in ONT reads.
-        // Uses all adapter orientations; RC adapters (e.g. RC of 3′ adapter) appear at
-        // the 5′ end of bottom-strand reads.
-        // Guard: adapter end must not reach the 3′ terminal zone (s + adapterLen <=
-        // seqLen - minOverlap), so the scan cannot confuse a 3′ adapter for a 5′ one.
-        for (String adapter : adapters) {
-            int adapterLen = adapter.length();
-            int maxStart = Math.min(minOverlap, seqLen - adapterLen - minOverlap);
+        for (int ai = 0; ai < adapters.size(); ai++) {
+            String adapter    = adapters.get(ai);
+            int    adapterLen = adapter.length();
+            int    maxStart   = Math.min(minOverlap, seqLen - adapterLen - minOverlap);
             if (maxStart < 0) continue;
+            int filterEnd = Math.min(seqLen, minOverlap + adapterLen);
+            if (filterEnd >= KMER_SIZE
+                    && !hasSharedKmer(readChars, 0, filterEnd, adapterHasKmer[ai]))
+                continue;
             int allowedEdits = (int) (adapterLen * maxErrorRate);
             for (int s = 0; s <= maxStart; s++) {
                 if (editDistance(seq, s, adapter, 0, adapterLen, allowedEdits)
@@ -454,13 +557,20 @@ public class LongReadTrimmer implements Trimmer {
      * </ol>
      */
     private int findThreePrimeClip(String seq, int seqLen) {
-        int trimTo = seqLen;
+        int    trimTo    = seqLen;
+        char[] readChars = seq.toCharArray();
 
         // Prefix scan: adapter hangs off the 3′ end.
-        for (String adapter : adapters) {
-            int adapterLen = adapter.length();
-            int maxOverlap = Math.min(seqLen, adapterLen);
+        for (int ai = 0; ai < adapters.size(); ai++) {
+            String adapter    = adapters.get(ai);
+            int    adapterLen = adapter.length();
+            int    maxOverlap = Math.min(seqLen, adapterLen);
             if (maxOverlap < minOverlap) continue;
+            int filterStart = seqLen - maxOverlap;
+            // Pre-filter: skip adapter if read's 3′ overlap region shares no k-mer with it.
+            if (maxOverlap >= KMER_SIZE
+                    && !hasSharedKmer(readChars, filterStart, seqLen, adapterHasKmer[ai]))
+                continue;
 
             for (int overlap = maxOverlap; overlap >= minOverlap; overlap--) {
                 int readStart = seqLen - overlap;
@@ -474,16 +584,18 @@ public class LongReadTrimmer implements Trimmer {
             }
         }
 
-        // Near-terminal full-adapter scan (HIFI only): full adapter ending within the
-        // last minOverlap bases before the true 3′ terminus. Guard: adapter start must
-        // not reach the 5′ terminal zone (s >= minOverlap), so the scan cannot confuse
-        // a 5′ adapter for a 3′ one on short reads.
+        // Near-terminal full-adapter scan (HIFI only).
         if (platform == Platform.HIFI) {
-            for (String adapter : adapters) {
-                int adapterLen = adapter.length();
-                int minStart = Math.max(minOverlap, seqLen - adapterLen - minOverlap);
-                int maxStart = seqLen - adapterLen;
+            for (int ai = 0; ai < adapters.size(); ai++) {
+                String adapter    = adapters.get(ai);
+                int    adapterLen = adapter.length();
+                int    minStart   = Math.max(minOverlap, seqLen - adapterLen - minOverlap);
+                int    maxStart   = seqLen - adapterLen;
                 if (minStart > maxStart) continue;
+                int filterEnd = Math.min(seqLen, maxStart + adapterLen);
+                if (filterEnd - minStart >= KMER_SIZE
+                        && !hasSharedKmer(readChars, minStart, filterEnd, adapterHasKmer[ai]))
+                    continue;
                 int allowedEdits = (int) (adapterLen * maxErrorRate);
                 for (int s = minStart; s <= maxStart; s++) {
                     if (s >= trimTo) break;

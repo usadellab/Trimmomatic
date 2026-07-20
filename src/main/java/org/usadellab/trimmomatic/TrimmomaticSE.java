@@ -87,14 +87,17 @@ public class TrimmomaticSE extends Trimmomatic {
 				}
 			}
 
-			logger.infoln(statsCollector.getStats().processStatsSE(statsSummary));
-
 			if (verbose) {
 				for (Trimmer t : trimmers) {
 					if (t instanceof IlluminaClippingTrimmer ict)
 						ict.printStats(logger);
 				}
 			}
+
+			// Close statsCollector first to ensure its background thread has finished
+			// merging all blocks before we read the final count.
+			statsCollector.close();
+			logger.infoln(statsCollector.getStats().processStatsSE(statsSummary));
 		}
 	}
 
