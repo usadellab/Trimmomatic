@@ -11,66 +11,99 @@ import java.util.Set;
 import org.usadellab.trimmomatic.fastq.FastqRecord;
 
 /**
- * BDRHAPSODYCORRECT:<whitelistDir>:<maxMismatch>[:<separator>]
+ * BDRHAPSODYCORRECT:[<beadVersion>:]<whitelistDir>:<maxMismatch>[:<separator>]
  *
  * Whitelist-corrects the three cell label segments (CLS1/CLS2/CLS3) of a BD
- * Rhapsody V1-bead R1 read and extracts the combined 27bp cell barcode plus
- * the raw 8bp UMI to the read name, matching the same bare-sequence
- * convention as UMISPLIT/BARCODECORRECT.
+ * Rhapsody R1 read and extracts the combined cell barcode plus the raw UMI to
+ * the read name, matching the same bare-sequence convention as
+ * UMISPLIT/BARCODECORRECT. One trimmer covers every supported bead version --
+ * <beadVersion> selects the segment lengths, linker lengths and prefix-inset
+ * handling internally, the same way LONGREADTRIM's platform hint (ONT/CLR/HIFI)
+ * selects behaviour within one class rather than one class per platform.
  *
- * R1 structure (empirically confirmed against real data and BD's own public
- * codebook, positions 0-indexed):
+ * <beadVersion> is optional and defaults to "V1" if omitted -- see the
+ * constructor for why it is a leading token rather than a trailing one like
+ * LONGREADTRIM's platform hint.
+ *
+ * ===========================================================================
+ * V1 (default; empirically confirmed against real data and BD's own public
+ * codebook)
+ * ===========================================================================
+ * R1 structure, 0-indexed:
  *   CLS1(0-9) - L1(9-21, fixed "ACTGGCCTGCGA") - CLS2(21-30) -
  *   L2(30-43, fixed "GGTAGCGGTGACA") - CLS3(43-52) - UMI(52-60) - poly-T carryover
- * Each CLS is one of 96 known sequences (whitelist-correctable); L1/L2 are
- * fixed linkers used only to anchor position, never extracted; UMI is random
- * and never corrected.
- *
- * Offset handling: a single cumulative offset is derived from CLS2 (checked
- * at nominal, then +/-1, then +/-2 -- this catches any indel that occurred
- * anywhere before CLS2, in CLS1 or L1, since only the cumulative shift at
- * CLS2's position matters). That same offset is then applied to CLS3 and the
- * UMI, without re-deriving it at L2. This was verified empirically on the
- * real BD Rhapsody excerpt data (see benchmark/scripts/rhapsody_offset_cascade_analysis.py,
- * not shipped): re-deriving the offset a second time at L2 resolved fewer
- * than 1% of the cases where CLS2's offset failed to place L2 exactly, and
- * moved the CLS3 whitelist-hit rate by under 0.2 percentage points across all
- * three real samples tested. The other ~99% of L2 mismatches are simple
- * substitution noise on a 13bp window (consistent with typical per-base
- * error rates), not a second indel -- an offset search cannot fix a
- * substitution, so re-checking doesn't help and isn't worth the extra
- * per-read cost.
- *
+ * Each CLS is one of 96 known sequences. CLS1 is always read at its fixed
+ * nominal position: nothing precedes it to derive an offset from. A single
+ * cumulative offset is then derived from CLS2 (checked at nominal, then +/-1,
+ * then +/-2 -- this catches any indel that occurred anywhere before CLS2, in
+ * CLS1 or L1, since only the cumulative shift at CLS2's position matters) and
+ * applied to CLS3 and the UMI too, without re-deriving it a second time at L2.
+ * This was verified empirically on real BD Rhapsody excerpt data (see
+ * benchmark/scripts/rhapsody_offset_cascade_analysis.py, not shipped):
+ * re-deriving the offset at L2 resolved fewer than 1% of the cases where
+ * CLS2's offset failed to place L2 exactly, and moved the CLS3 whitelist-hit
+ * rate by under 0.2 percentage points across all three real samples tested.
+ * The other ~99% of L2 mismatches are simple substitution noise on a 13bp
+ * window, not a second indel -- an offset search cannot fix a substitution.
  * If CLS2 has no exact match at any of the five candidate offsets, one
- * Hamming-1 correction attempt is made at the nominal (zero) offset only --
- * a genuine second indel between CLS1 and CLS2 is rare enough (see above)
- * that a mismatch at every offset is far more likely to be substitution
- * noise at the nominal position than an indel a wider search would catch.
+ * Hamming-1 correction attempt is made at the nominal (zero) offset only.
  *
- * CLS1 is always read at its fixed nominal position (0-9): no prior segment
- * exists to derive an offset from before it.
+ * ===========================================================================
+ * ENHANCEDV2 (best-guess design, NOT validated against real data -- see below)
+ * ===========================================================================
+ * Named after BD's own "Enhanced V2" bead designation specifically -- BD's
+ * bead line-up isn't a clean V1/V2/V3 progression: "V1" and "Enhanced" are
+ * separate bead families, and "Enhanced" itself has sub-generations
+ * ("Enhanced", "Enhanced V2", "Enhanced V3"). The structure below is what's
+ * documented for "Enhanced V2" specifically, not the whole Enhanced family.
  *
+ * R1 structure per BD's own documentation and the community-maintained
+ * scg_lib_structs reference (https://teichlab.github.io/scg_lib_structs/methods_html/BD_Rhapsody.html),
+ * neither of which this project has cross-checked against actual Enhanced V2
+ * reads the way V1 was checked:
+ *   [prefix inset: 0-3bp, one of "", "A", "GT", "TCA"] - CLS1(9bp) -
+ *   L1(~4bp, "GTGA") - CLS2(9bp) - L2(~4bp, "GACA") - CLS3(9bp) - UMI(8bp) -
+ *   poly-T carryover
+ * Each CLS is one of 384 known sequences (vs. V1's 96). The prefix inset is a
+ * deliberate, always-present variable-length element (not sequencing noise),
+ * so it is resolved first: CLS1 is searched for at each candidate inset length
+ * (0, 1, 2, 3, in that order, first exact whitelist hit wins) rather than at a
+ * single fixed position. Whatever inset length is found becomes the base
+ * offset, and CLS2/CLS3/UMI localisation then proceeds exactly as in V1
+ * (CLS2 offset search, then straight-line propagation to CLS3/UMI), just
+ * shifted by that base offset. If no inset length gives CLS1 an exact match,
+ * one Hamming-1 attempt is made at inset length 0.
+ *
+ * This mode is a documentation-derived best guess, not an empirically
+ * verified design: the exact linker sequences/lengths, whether the inset is
+ * really limited to those four values, and whether V1's "one offset from CLS2
+ * propagates cleanly to CLS3" finding even holds for Enhanced V2 beads are all
+ * unconfirmed against real reads. Treat ENHANCEDV2 as experimental until
+ * checked against an actual Enhanced V2 dataset.
+ *
+ * ===========================================================================
+ * Common to both versions
+ * ===========================================================================
  * The CLS1/CLS2/CLS3 codebooks are BD Biosciences' own commercial-kit
- * reference data (BD Rhapsody V1 bead codebook) with no confirmed
- * redistribution license, so they are not bundled with Trimmomatic --
- * <whitelistDir> must be supplied and must contain CLS1.txt, CLS2.txt and
- * CLS3.txt (one sequence per line, plain text -- 96 tiny entries each for BD
- * Rhapsody V1, unlike the multi-million-line droplet whitelists BARCODECORRECT
- * handles, so compressed-format support isn't worth the complexity here). A
- * single directory argument is used instead of
- * three separate file paths (as BARCODECORRECT takes for its one whitelist)
- * because three colon-delimited Windows paths in one argument cannot be
- * parsed back apart from each other.
+ * reference data with no confirmed redistribution license, so they are not
+ * bundled with Trimmomatic -- <whitelistDir> must be supplied and must
+ * contain CLS1.txt, CLS2.txt and CLS3.txt (one sequence per line, plain text;
+ * 96 entries each for V1, 384 each for Enhanced V2 -- small enough in either
+ * case that compressed-format support isn't worth the complexity). A single
+ * directory argument is used instead of three separate file paths because
+ * three colon-delimited Windows paths in one argument cannot be parsed back
+ * apart from each other.
  *
- * A read whose CLS1, CLS2 (offset) or CLS3 has no confident match within
- * maxMismatch is dropped. A read shorter than 60bp (the full CLS1-L1-CLS2-L2-
- * CLS3-UMI construct) is dropped outright.
+ * A read whose CLS1 (inset search), CLS2 (offset) or CLS3 has no confident
+ * match within maxMismatch is dropped, as is a read too short for the
+ * selected version's full construct.
  *
  * The read is renamed as:
- *   @original_name<separator><CLS1+CLS2+CLS3, 27bp><separator><raw UMI, 8bp>
+ *   @original_name<separator><CLS1+CLS2+CLS3><separator><raw UMI>
  *
- * Example:
+ * Examples:
  *   BDRHAPSODYCORRECT:benchmark/barcode_whitelists/rhapsody_v1:1
+ *   BDRHAPSODYCORRECT:ENHANCEDV2:benchmark/barcode_whitelists/rhapsody_enhancedv2:1
  */
 public class BdRhapsodyCorrectTrimmer extends AbstractSingleRecordTrimmer {
     private static final int MAX_SUPPORTED_MISMATCH = 1;
@@ -78,21 +111,31 @@ public class BdRhapsodyCorrectTrimmer extends AbstractSingleRecordTrimmer {
 
     private static final int[] SEARCH_OFFSETS = { 0, -1, 1, -2, 2 };
 
-    private static final int CLS1_LEN = 9;
-    private static final int L1_LEN = 12;
-    private static final int CLS2_LEN = 9;
-    private static final int L2_LEN = 13;
-    private static final int CLS3_LEN = 9;
-    private static final int UMI_LEN = 8;
+    private static final class BeadProfile {
+        final int cls1Len, l1Len, cls2Len, l2Len, cls3Len, umiLen;
+        final int[] insetCandidates;
 
-    private static final int CLS1_START = 0;
-    private static final int CLS1_END = CLS1_START + CLS1_LEN;
-    private static final int CLS2_START = CLS1_END + L1_LEN;
-    private static final int CLS2_END = CLS2_START + CLS2_LEN;
-    private static final int CLS3_START = CLS2_END + L2_LEN;
-    private static final int CLS3_END = CLS3_START + CLS3_LEN;
-    private static final int UMI_START = CLS3_END;
-    private static final int UMI_END = UMI_START + UMI_LEN;
+        BeadProfile(int cls1Len, int l1Len, int cls2Len, int l2Len, int cls3Len, int umiLen, int[] insetCandidates) {
+            this.cls1Len = cls1Len;
+            this.l1Len = l1Len;
+            this.cls2Len = cls2Len;
+            this.l2Len = l2Len;
+            this.cls3Len = cls3Len;
+            this.umiLen = umiLen;
+            this.insetCandidates = insetCandidates;
+        }
+    }
+
+    // V1: no prefix inset -- candidate list of just {0} makes the inset-search
+    // loop below degenerate into "always try position 0", identical to this
+    // trimmer's original V1-only behaviour.
+    private static final BeadProfile PROFILE_V1 = new BeadProfile(9, 12, 9, 13, 9, 8, new int[] { 0 });
+    // ENHANCEDV2: best-guess, see class javadoc -- NOT validated against real data.
+    private static final BeadProfile PROFILE_ENHANCEDV2 = new BeadProfile(9, 4, 9, 4, 9, 8, new int[] { 0, 1, 2, 3 });
+
+    private final int cls1Len, cls2Len, cls3Len, umiLen;
+    private final int cls2NominalStart, cls3NominalStart, umiNominalStart, umiNominalEnd;
+    private final int[] insetCandidates;
 
     private final int maxMismatch;
     private final String separator;
@@ -101,30 +144,61 @@ public class BdRhapsodyCorrectTrimmer extends AbstractSingleRecordTrimmer {
     private final Set<String> cls3Whitelist;
 
     public BdRhapsodyCorrectTrimmer(String args) throws IOException {
-        // Same right-to-left parsing as BARCODECORRECT (a Windows drive-letter
-        // path contains its own colon), but here there is only one path
-        // argument -- see class javadoc for why three separate whitelist paths
-        // aren't used.
         String[] tokens = args.split(":");
-        if (tokens.length < 2)
+        if (tokens.length < 1)
             throw new IllegalArgumentException(
                     "BDRHAPSODYCORRECT requires <whitelistDir>:<maxMismatch>, got: " + args);
 
-        boolean hasSeparator = !isInteger(tokens[tokens.length - 1]);
+        // beadVersion is a leading token, not trailing like LONGREADTRIM's
+        // platform hint: <separator> is already an optional trailing
+        // non-numeric token, and a second optional trailing non-numeric token
+        // (beadVersion) couldn't be told apart from it by the
+        // is-the-last-token-an-integer heuristic used below. Recognising a
+        // fixed vocabulary ("V1"/"ENHANCEDV2") at the front avoids that clash
+        // and keeps every existing V1 invocation working unchanged.
+        BeadProfile profile;
+        String[] remaining;
+        if (tokens[0].equalsIgnoreCase("V1")) {
+            profile = PROFILE_V1;
+            remaining = Arrays.copyOfRange(tokens, 1, tokens.length);
+        } else if (tokens[0].equalsIgnoreCase("ENHANCEDV2")) {
+            profile = PROFILE_ENHANCEDV2;
+            remaining = Arrays.copyOfRange(tokens, 1, tokens.length);
+        } else {
+            profile = PROFILE_V1;
+            remaining = tokens;
+        }
+
+        if (remaining.length < 2)
+            throw new IllegalArgumentException(
+                    "BDRHAPSODYCORRECT requires <whitelistDir>:<maxMismatch>, got: " + args);
+
+        boolean hasSeparator = !isInteger(remaining[remaining.length - 1]);
         int trailingCount = hasSeparator ? 2 : 1;
-        int pathTokenCount = tokens.length - trailingCount;
+        int pathTokenCount = remaining.length - trailingCount;
         if (pathTokenCount < 1)
             throw new IllegalArgumentException(
                     "BDRHAPSODYCORRECT requires <whitelistDir>:<maxMismatch>, got: " + args);
 
-        String whitelistDir = String.join(":", Arrays.copyOfRange(tokens, 0, pathTokenCount));
-        maxMismatch = Integer.parseInt(tokens[pathTokenCount]);
-        separator = hasSeparator ? tokens[pathTokenCount + 1] : "_";
+        String whitelistDir = String.join(":", Arrays.copyOfRange(remaining, 0, pathTokenCount));
+        maxMismatch = Integer.parseInt(remaining[pathTokenCount]);
+        separator = hasSeparator ? remaining[pathTokenCount + 1] : "_";
 
         if (maxMismatch < 0 || maxMismatch > MAX_SUPPORTED_MISMATCH)
             throw new IllegalArgumentException(
                     "BDRHAPSODYCORRECT maxMismatch must be between 0 and " + MAX_SUPPORTED_MISMATCH
                     + " (got " + maxMismatch + "); larger neighbourhoods aren't worth it for a plain Hamming correction");
+
+        cls1Len = profile.cls1Len;
+        cls2Len = profile.cls2Len;
+        cls3Len = profile.cls3Len;
+        umiLen = profile.umiLen;
+        insetCandidates = profile.insetCandidates;
+
+        cls2NominalStart = cls1Len + profile.l1Len;
+        cls3NominalStart = cls2NominalStart + cls2Len + profile.l2Len;
+        umiNominalStart = cls3NominalStart + cls3Len;
+        umiNominalEnd = umiNominalStart + umiLen;
 
         File dir = new File(whitelistDir);
         cls1Whitelist = loadWhitelist(new File(dir, "CLS1.txt"));
@@ -176,48 +250,77 @@ public class BdRhapsodyCorrectTrimmer extends AbstractSingleRecordTrimmer {
     @Override
     public FastqRecord processRecord(FastqRecord in) {
         int len = in.getLength();
-        if (len < UMI_END)
-            return null; // shorter than the full CLS1-L1-CLS2-L2-CLS3-UMI construct
+        if (len < umiNominalEnd)
+            return null; // shorter than the full construct even with zero prefix inset
 
         String seq = in.getSequence();
 
-        // CLS1 is always at the fixed nominal position: nothing precedes it to
-        // derive an offset from.
-        String cls1 = correct(seq.substring(CLS1_START, CLS1_END), cls1Whitelist);
-        if (cls1 == null)
+        // Resolve the prefix inset (V1: always just candidate 0, degenerating
+        // to "CLS1 at its fixed nominal position", identical to V1's original
+        // behaviour) and correct CLS1 at the same time.
+        Integer insetOffset = null;
+        String cls1 = null;
+        for (int candidate : insetCandidates) {
+            int start = candidate;
+            int end = candidate + cls1Len;
+            if (start < 0 || end > len)
+                continue;
+            String window = seq.substring(start, end);
+            if (cls1Whitelist.contains(window)) {
+                insetOffset = candidate;
+                cls1 = window;
+                break;
+            }
+        }
+        if (insetOffset == null) {
+            int fallback = insetCandidates[0];
+            int end = fallback + cls1Len;
+            if (end <= len) {
+                String corrected = correct(seq.substring(fallback, end), cls1Whitelist);
+                if (corrected != null) {
+                    insetOffset = fallback;
+                    cls1 = corrected;
+                }
+            }
+        }
+        if (insetOffset == null)
             return null;
 
-        Integer offset = null;
+        // CLS2 offset search, shifted by whatever prefix inset was resolved
+        // above -- otherwise identical to V1's original CLS2-anchored search.
+        Integer midOffset = null;
         String cls2 = null;
         for (int delta : SEARCH_OFFSETS) {
-            int start = CLS2_START + delta;
-            int end = CLS2_END + delta;
+            int start = insetOffset + cls2NominalStart + delta;
+            int end = start + cls2Len;
             if (start < 0 || end > len)
                 continue;
             String window = seq.substring(start, end);
             if (cls2Whitelist.contains(window)) {
-                offset = delta;
+                midOffset = delta;
                 cls2 = window;
                 break;
             }
         }
-        if (offset == null) {
-            // No exact match at any offset -- most likely substitution noise at
-            // the nominal position rather than an indel a wider search missed
-            // (see class javadoc). One Hamming-1 attempt at offset 0 only.
-            String corrected = correct(seq.substring(CLS2_START, CLS2_END), cls2Whitelist);
-            if (corrected != null) {
-                offset = 0;
-                cls2 = corrected;
+        if (midOffset == null) {
+            int start = insetOffset + cls2NominalStart;
+            int end = start + cls2Len;
+            if (end <= len) {
+                String corrected = correct(seq.substring(start, end), cls2Whitelist);
+                if (corrected != null) {
+                    midOffset = 0;
+                    cls2 = corrected;
+                }
             }
         }
-        if (offset == null)
+        if (midOffset == null)
             return null;
 
-        int cls3Start = CLS3_START + offset;
-        int cls3End = CLS3_END + offset;
-        int umiStart = UMI_START + offset;
-        int umiEnd = UMI_END + offset;
+        int totalOffset = insetOffset + midOffset;
+        int cls3Start = totalOffset + cls3NominalStart;
+        int cls3End = cls3Start + cls3Len;
+        int umiStart = totalOffset + umiNominalStart;
+        int umiEnd = umiStart + umiLen;
         if (cls3Start < 0 || umiEnd > len)
             return null;
 

@@ -22,14 +22,22 @@ public class BdRhapsodyCorrectTrimmerTest {
     private static final String CLS2 = "TTTGGGCCA";
     private static final String CLS3 = "GGGTTTAAC";
     private static final String UMI = "ACGTACGT";
-    private static final String L1_FILLER = "NNNNNNNNNNNN";    // 12bp, nominal
-    private static final String L2_FILLER = "NNNNNNNNNNNNN";   // 13bp, nominal
+    private static final String L1_FILLER = "NNNNNNNNNNNN";    // 12bp, nominal (V1)
+    private static final String L2_FILLER = "NNNNNNNNNNNNN";   // 13bp, nominal (V1)
+
+    // ENHANCEDV2 mode's linkers are much shorter than V1's -- 4bp each.
+    private static final String L1_FILLER_ENHANCEDV2 = "NNNN";
+    private static final String L2_FILLER_ENHANCEDV2 = "NNNN";
 
     @TempDir
     Path tempDir;
 
     private FastqRecord makeRecord(String name, String seq) {
         return new FastqRecord(name, seq, "", "I".repeat(seq.length()), 33);
+    }
+
+    private String nominalEnhancedV2Read() {
+        return CLS1 + L1_FILLER_ENHANCEDV2 + CLS2 + L2_FILLER_ENHANCEDV2 + CLS3 + UMI;
     }
 
     private String nominalRead() {
@@ -267,6 +275,93 @@ public class BdRhapsodyCorrectTrimmerTest {
         writeFile(new File(dir, "CLS1.txt"), CLS1);
         // CLS2.txt / CLS3.txt intentionally missing
         assertThrows(IOException.class, () -> new BdRhapsodyCorrectTrimmer(dir.getPath() + ":1"));
+    }
+
+    // ------------------------------------------------------------------
+    // Bead version selection (V1 default / explicit / ENHANCEDV2)
+
+    @Test
+    public void testExplicitV1Token_behavesSameAsDefault() throws Exception {
+        File wl = writeWhitelistDir(CLS1, CLS2, CLS3);
+        BdRhapsodyCorrectTrimmer trimmer = new BdRhapsodyCorrectTrimmer("V1:" + wl.getPath() + ":1");
+
+        FastqRecord result = trimmer.processRecord(makeRecord("r1", nominalRead()));
+
+        assertNotNull(result);
+        assertEquals("r1_" + CLS1 + CLS2 + CLS3 + "_" + UMI, result.getName());
+    }
+
+    @Test
+    public void testEnhancedV2_zeroInset_exactMatch() throws Exception {
+        File wl = writeWhitelistDir(CLS1, CLS2, CLS3);
+        BdRhapsodyCorrectTrimmer trimmer = new BdRhapsodyCorrectTrimmer("ENHANCEDV2:" + wl.getPath() + ":1");
+
+        FastqRecord result = trimmer.processRecord(makeRecord("r1", nominalEnhancedV2Read()));
+
+        assertNotNull(result);
+        assertEquals("r1_" + CLS1 + CLS2 + CLS3 + "_" + UMI, result.getName());
+        assertEquals("", result.getSequence());
+    }
+
+    @Test
+    public void testEnhancedV2_insetOfOne_locatesCorrectly() throws Exception {
+        File wl = writeWhitelistDir(CLS1, CLS2, CLS3);
+        BdRhapsodyCorrectTrimmer trimmer = new BdRhapsodyCorrectTrimmer("ENHANCEDV2:" + wl.getPath() + ":1");
+
+        String seq = "A" + nominalEnhancedV2Read(); // 1bp prefix inset
+        FastqRecord result = trimmer.processRecord(makeRecord("r1", seq));
+
+        assertNotNull(result);
+        assertEquals("r1_" + CLS1 + CLS2 + CLS3 + "_" + UMI, result.getName());
+    }
+
+    @Test
+    public void testEnhancedV2_insetOfTwo_locatesCorrectly() throws Exception {
+        File wl = writeWhitelistDir(CLS1, CLS2, CLS3);
+        BdRhapsodyCorrectTrimmer trimmer = new BdRhapsodyCorrectTrimmer("ENHANCEDV2:" + wl.getPath() + ":1");
+
+        String seq = "GT" + nominalEnhancedV2Read(); // 2bp prefix inset
+        FastqRecord result = trimmer.processRecord(makeRecord("r1", seq));
+
+        assertNotNull(result);
+        assertEquals("r1_" + CLS1 + CLS2 + CLS3 + "_" + UMI, result.getName());
+    }
+
+    @Test
+    public void testEnhancedV2_insetOfThree_locatesCorrectly() throws Exception {
+        File wl = writeWhitelistDir(CLS1, CLS2, CLS3);
+        BdRhapsodyCorrectTrimmer trimmer = new BdRhapsodyCorrectTrimmer("ENHANCEDV2:" + wl.getPath() + ":1");
+
+        String seq = "TCA" + nominalEnhancedV2Read(); // 3bp prefix inset
+        FastqRecord result = trimmer.processRecord(makeRecord("r1", seq));
+
+        assertNotNull(result);
+        assertEquals("r1_" + CLS1 + CLS2 + CLS3 + "_" + UMI, result.getName());
+    }
+
+    @Test
+    public void testEnhancedV2_cls2OneMismatch_correctsAtNominalOffset() throws Exception {
+        File wl = writeWhitelistDir(CLS1, CLS2, CLS3);
+        BdRhapsodyCorrectTrimmer trimmer = new BdRhapsodyCorrectTrimmer("ENHANCEDV2:" + wl.getPath() + ":1");
+
+        String rawCls2 = "ATTGGGCCA"; // position 0: T -> A
+        String seq = CLS1 + L1_FILLER_ENHANCEDV2 + rawCls2 + L2_FILLER_ENHANCEDV2 + CLS3 + UMI;
+        FastqRecord result = trimmer.processRecord(makeRecord("r1", seq));
+
+        assertNotNull(result);
+        assertEquals("r1_" + CLS1 + CLS2 + CLS3 + "_" + UMI, result.getName());
+    }
+
+    @Test
+    public void testEnhancedV2_cls1Unresolvable_drops() throws Exception {
+        File wl = writeWhitelistDir(CLS1, CLS2, CLS3);
+        BdRhapsodyCorrectTrimmer trimmer = new BdRhapsodyCorrectTrimmer("ENHANCEDV2:" + wl.getPath() + ":1");
+
+        // No inset candidate (0-3) lines up CLS1 with the whitelist entry, and
+        // no offset qualifies as a 1-mismatch neighbour of it either.
+        String garbledCls1 = "CCCAAAGGT";
+        String seq = garbledCls1 + L1_FILLER_ENHANCEDV2 + CLS2 + L2_FILLER_ENHANCEDV2 + CLS3 + UMI;
+        assertNull(trimmer.processRecord(makeRecord("r1", seq)));
     }
 
     // ------------------------------------------------------------------
