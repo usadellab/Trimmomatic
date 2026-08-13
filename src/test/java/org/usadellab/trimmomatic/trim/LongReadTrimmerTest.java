@@ -36,7 +36,9 @@ import org.usadellab.trimmomatic.fastq.FastqRecord;
  *   - Multiple adapters: correct adapter chosen
  *   - Interior chimera splitting: read split into fragments
  *   - Interior splitting disabled for HIFI platform
- *   - HIFI-only 3′ near-terminal full-adapter scan (trimmed); confirmed absent for ONT
+ *   - 3′ near-terminal full-adapter scan: trimmed on HIFI and on ONT
+ *   - Residual interior adapter, the three FN populations measured on lsk114
+ *   - Payload resembling the adapter near the 3′ end is not clipped (835e329 guard)
  *   - Split fragments have suffix /splitNofM in name
  *   - Fragment ends re-clipped after split (residual fix)
  *   - Empty FASTA → IllegalArgumentException
@@ -358,20 +360,171 @@ public class LongReadTrimmerTest {
         assertEquals("G".repeat(30), out.getSequence());
     }
 
+    /**
+     * Re-scoped from {@code testOnt3PrimeNearTerminalGap_stillNotTrimmed}.
+     *
+     * <p>That test asserted a complete, perfectly-matching 20 bp adapter at
+     * err=0.0 must SURVIVE on ONT.  That was never a correctness claim: it
+     * encoded the accepted-miss tradeoff from 835e329, which reverted a
+     * BRUTE-FORCE 3' near-terminal scan (every start position in a
+     * minOverlap-wide window, all orientations, no seed requirement) because it
+     * over-clipped payload resembling the adapter.
+     *
+     * <p>The current path is seed-gated and requires the full adapter, and the
+     * over-clipping it was reverted for has been measured at zero.  Per-base
+     * ground truth on Badread reads drawn from the real E. coli K-12 reference,
+     * baseline vs this code, over ~12.5k reads per arm:
+     *
+     * <pre>
+     *   arm            distal FP (genuine over-clip)   FN        F1
+     *   ~10% error     32 -> 32   (unchanged)          50758 -> 26     0.8909 -> 0.9226
+     *   ~3%  error     570 -> 570 (unchanged)          56503 -> 2053   0.8858 -> 0.9225
+     * </pre>
+     *
+     * <p>On real ONT data the same comparison removes 441 bases from 14.3 Gbp
+     * (ont-zymo) and 3884 from 30.9 Gbp (ont-zymo-lsk114) with no read loss,
+     * while residual adapter reads fall 147 -> 42 on ont-zymo-lsk114.
+     *
+     * <p>835e329's actual intent is preserved by
+     * {@link #test3PrimeNearTerminal_payloadResemblingAdapter_notClipped},
+     * which guards payload that merely resembles the adapter.  That is the
+     * property worth asserting; a mandated miss is not.
+     */
     @Test
-    public void testOnt3PrimeNearTerminalGap_stillNotTrimmed() throws Exception {
-        // Same layout as above, but ONT/CLR must not gain this scan: it produced
-        // false-positive over-clipping on real payload sequence at ONT/CLR error
-        // rates and was deliberately reverted for those platforms (see 835e329).
-        // minFragLen=30 keeps workLen (54) below the interior-split threshold
-        // (2*minOverlap + 2*minFragLen = 80), so interior splitting can't mask
-        // the absence of the near-terminal scan here.
+    public void testOnt3PrimeNearTerminalGap_nowTrimmed() throws Exception {
+        // minFragLen=30 keeps workLen (54) below the OLD interior-split gate
+        // (2*minOverlap + 2*minFragLen = 80) but above the corrected one
+        // (2*minOverlap + minFragLen = 50), so this exercises both fixes.
         File fa = singleAdapterFasta(SPLIT_ADAPTER);
         FastqRecord r = rec("G".repeat(30) + SPLIT_ADAPTER + "TTTT");
 
         FastqRecord out = trimOne(faPath(fa, 0.0f, 10, 30, "ONT"), r);
         assertNotNull(out);
-        assertEquals("G".repeat(30) + SPLIT_ADAPTER + "TTTT", out.getSequence());
+        assertEquals("G".repeat(30), out.getSequence(),
+                "a complete adapter near the 3' end must be removed on ONT too");
+    }
+
+    // ------------------------------------------------------------------
+    // Residual interior adapter: the three FN populations measured on
+    // ont-zymo-lsk114 (462 residual-adapter records, seqkit locate mm<=2).
+    //
+    //   313 (68%)  reads < 2*minOverlap + 2*minFragLen  -> interior scan gated off
+    //   119 (26%)  reads >= gate, adapter ends within minOverlap of the 3' end
+    //    30  (6%)  already-split fragments carrying a residual adapter
+    //
+    // All three assert the DESIRED behaviour and are expected to fail against
+    // the current implementation.  Benchmark params: err 0.15, minOverlap 10,
+    // minFragLen 100, ONT.
+
+    /**
+     * Population 1 (68% of FNs): a 201 bp read carrying a full interior adapter.
+     * The gate at processRecords (workLen >= 2*minOverlap + 2*minFragLen = 220)
+     * skips the interior scan entirely, so the adapter survives.  The gate
+     * demands room for TWO viable fragments, but the per-fragment minFragLen
+     * filter means ONE viable fragment is enough.
+     */
+    @Test
+    public void testShortRead_interiorAdapter_scanGateTooStrict() throws Exception {
+        File fa = singleAdapterFasta(SPLIT_ADAPTER);
+        // 150 payload + 20 adapter + 31 payload = 201 bp, below the 220 gate.
+        FastqRecord r = rec("G".repeat(150) + SPLIT_ADAPTER + "C".repeat(31));
+
+        FastqRecord out = trimOne(faPath(fa, 0.0f, 10, 100, "ONT"), r);
+        assertNotNull(out);
+        // Fragment 1 (150 bp) is viable; fragment 2 (31 bp) is below minFragLen.
+        assertEquals("G".repeat(150), out.getSequence(),
+                "interior adapter must be removed even when only one fragment survives");
+    }
+
+    /**
+     * Population 2 (26% of FNs): read is long enough for the interior scan, and
+     * the 6-mer seed produces the candidate, but bestMatchAt rejects it because
+     * the adapter end falls inside the 3' terminal zone
+     * (seqLen - readStart - terminalZone < adapterLen).  The 3' terminal clip
+     * cannot cover it either: the trailing overlap (5) is below minOverlap (10).
+     */
+    @Test
+    public void test3PrimeNearTerminal_fullAdapterWithTrailingBases() throws Exception {
+        File fa = singleAdapterFasta(SPLIT_ADAPTER);
+        // 200 payload + 20 adapter + 5 trailing = 225 bp, above the 220 gate.
+        // readStart=200 <= seeding cap (225-10-10=205), so the candidate exists,
+        // but 225-200-10 = 15 < 20 = adapterLen, so bestMatchAt discards it.
+        FastqRecord r = rec("G".repeat(200) + SPLIT_ADAPTER + "TTTTT");
+
+        FastqRecord out = trimOne(faPath(fa, 0.0f, 10, 100, "ONT"), r);
+        assertNotNull(out);
+        assertEquals("G".repeat(200), out.getSequence(),
+                "full adapter near the 3' end must be removed");
+    }
+
+    /**
+     * Population 3 (6% of FNs): a read split at one junction whose surviving
+     * fragment still carries a second adapter.  clipFragment only re-clips the
+     * fragment terminals, so an adapter left in the fragment interior by the
+     * original scan's blind spots is never revisited.
+     */
+    @Test
+    public void testSplitFragment_residualInteriorAdapter() throws Exception {
+        File fa = singleAdapterFasta(SPLIT_ADAPTER);
+        // adapter #1 at 150 (clean interior), adapter #2 at 330 with 5 trailing.
+        FastqRecord r = rec("G".repeat(150) + SPLIT_ADAPTER
+                          + "C".repeat(160) + SPLIT_ADAPTER + "TTTTT");
+
+        FastqRecord[] frags = trim(faPath(fa, 0.0f, 10, 100, "ONT"), r);
+        for (FastqRecord f : frags)
+            assertTrue(f == null || !f.getSequence().contains(SPLIT_ADAPTER),
+                    "no emitted fragment may still contain a full adapter");
+    }
+
+    /**
+     * Regression guard for 835e329: the reverted brute-force 3' near-terminal
+     * scan over-clipped payload that merely resembled the adapter.  Any fix for
+     * the tests above must stay seed-gated and inside the edit budget -- payload
+     * sharing a 6-mer with the adapter but exceeding allowedEdits must survive.
+     */
+    @Test
+    public void test3PrimeNearTerminal_payloadResemblingAdapter_notClipped() throws Exception {
+        File fa = singleAdapterFasta(SPLIT_ADAPTER);
+        // Shares the adapter's first 6 bases (AGATCG) so the k-mer seed fires,
+        // but the remaining 14 bases are unrelated -> far beyond 3 allowed edits
+        // at err 0.15 (0.15 * 20 = 3).
+        String lookalike = "AGATCG" + "TTATTATTATTATT";
+        assertEquals(SPLIT_ADAPTER.length(), lookalike.length());
+        FastqRecord r = rec("G".repeat(200) + lookalike + "TTTTT");
+
+        FastqRecord out = trimOne(faPath(fa, 0.15f, 10, 100, "ONT"), r);
+        assertNotNull(out);
+        assertEquals("G".repeat(200) + lookalike + "TTTTT", out.getSequence(),
+                "payload resembling the adapter must not be clipped");
+    }
+
+    /**
+     * Nested adapter pairs must not leave a residual base at the 3' end.
+     *
+     * <p>Uses the real LSK114 pair, where {@code 3'[1:18]} is byte-identical to
+     * the first 17 bases of the 5' adapter's reverse complement.  That lets the
+     * 3' prefix scan match the longer adapter one base late: with a 2-base
+     * trailing gap it accepts a 19-base overlap at {@code adapterStart + 1}
+     * (17 matching, 2 mismatching, budget 2) and sets trimTo there, stranding the
+     * 3' adapter's first base.
+     *
+     * <p>The interior scan finds the full adapter at the correct offset, but only
+     * because it now runs on the untrimmed read -- scanning the already-clipped
+     * window saw a 1-base remnant and nothing to match.  The straddling hit then
+     * pulls trimTo back over the whole adapter.
+     */
+    @Test
+    public void testNestedAdapterPair_noResidualBaseAt3Prime() throws Exception {
+        File fa = writeFasta(
+                ">SQK-LSK114_5prime\nCCTGTACTTCGTTCAGTTACGTATTGC\n",
+                ">SQK-LSK114_3prime\nAGCAATACGTAACTGAAC\n");
+        String payload = "G".repeat(200);
+        FastqRecord r = rec(payload + "AGCAATACGTAACTGAAC" + "TT");
+
+        FastqRecord out = trimOne(faPath(fa, 0.15f, 10, 100, "ONT"), r);
+        assertNotNull(out);
+        assertEquals(payload, out.getSequence(),
+                "no adapter base may survive the 3' clip");
     }
 
     // ------------------------------------------------------------------

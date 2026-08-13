@@ -58,6 +58,25 @@ import org.usadellab.trimmomatic.fastq.FastqRecord;
  * <p><b>Single-end mode only.</b>  No current long-read platform produces
  * paired-end data; invoking this step in PE mode throws immediately.
  *
+ * <p><b>Known limitation: the edit budget is a hard floor on recall.</b>  A match
+ * is accepted only within {@code allowedEdits(len)} edits, which for an 18 bp
+ * adapter at {@code maxErrorRate} 0.15 is 2.  An adapter carrying two mismatches
+ * of its own plus a sequencing error in the neighbouring bases exceeds that and
+ * is not found.  Nothing in this class can recover such a match; it is a property
+ * of the threshold, not of where the scans look.
+ *
+ * <p>Raising the budget was measured as a way to reach those reads and rejected.
+ * Rounding instead of truncating (18 bp: 2 edits to 3) cleared almost all of
+ * them, but multiplied genuine over-clipping of payload roughly eightfold and
+ * lowered overall F1, because a looser threshold admits adapter-like payload just
+ * as readily as degraded adapter.  This is the same failure mode that caused the
+ * brute-force 3' near-terminal scan to be reverted in 835e329.
+ *
+ * <p>Closing that gap needs a discriminator other than the edit threshold —
+ * base qualities at the match, a positional prior, or complexity weighting so
+ * that low-complexity matches are required to show more evidence than
+ * high-complexity ones.  A uniform threshold cannot separate the two.
+ *
  * <p>Recommended pipeline order:
  * <pre>
  *   LONGREADTRIM:adapters.fa:0.10  MINLEN:200
@@ -442,32 +461,66 @@ public class LongReadTrimmer implements Trimmer {
         // ---- Terminal clipping ----
         int clipFrom = findFivePrimeClip(seq, seqLen);
         int trimTo   = findThreePrimeClip(seq, seqLen);
-        int workLen  = trimTo - clipFrom;
 
+        // ---- Interior adapter hits (ONT / CLR only) ----
+        // Scanned on the UNTRIMMED read, in full-read coordinates.  Scanning the
+        // already-clipped window made the result depend on the terminal scans
+        // running first: a terminal scan can accept a shifted partial alignment
+        // and clip through an adapter, and the interior scan then no longer sees
+        // a full adapter to remove.  That happens whenever one adapter is nested
+        // in another -- for LSK114, seq[1..17] of the 18 bp 3' adapter is exactly
+        // the first 17 bases of the 5' adapter's reverse complement, so the 3'
+        // scan matches the longer adapter one base late and strands the first
+        // base.  Scanning the whole read keeps the full-length hit available.
+        List<int[]> hits = Collections.emptyList();
+        if (platform != Platform.HIFI) {
+            hits = findInternalHits(seq, seqLen);
+            // A hit straddling the 3' boundary wins over the terminal clip: pull
+            // trimTo back across the whole adapter instead of keeping the residue.
+            //
+            // The 3' side only.  The 5' side already has a near-terminal
+            // full-adapter scan, so its boundary is trustworthy, and reconciling
+            // it there over-clips for the same nesting reason in mirror image:
+            // seq[10..26] of the 27 bp 5' adapter equals the first 17 bases of
+            // the 3' adapter's reverse complement, so a shifted hit ends one base
+            // past the real 5' adapter and would drag clipFrom with it.
+            for (int[] hit : hits)
+                if (hit[1] >= trimTo && hit[0] < trimTo) trimTo = hit[0];
+        }
+
+        int workLen = trimTo - clipFrom;
         if (workLen <= 0) return new FastqRecord[]{null};
 
-        // ---- Interior chimera splitting (ONT / CLR only) ----
-        if (platform != Platform.HIFI
-                && workLen >= 2 * minOverlap + 2 * minFragLen) {
+        // ---- Interior chimera splitting ----
+        // The gate only needs room for the interior scan zone (2 * minOverlap)
+        // plus ONE viable fragment: the per-fragment minFragLen filter below
+        // discards the non-viable side on its own.  Requiring 2 * minFragLen
+        // here skipped the scan on reads that could still yield one clean
+        // fragment, leaving the interior adapter in the output.
+        if (workLen >= 2 * minOverlap + minFragLen && !hits.isEmpty()) {
 
-            String      workSeq = seq.substring(clipFrom, trimTo);
-            List<int[]> hits    = findInternalHits(workSeq, workLen);
+            // Only hits fully inside the (possibly widened) kept window split it;
+            // the straddling ones were already absorbed into the boundaries.
+            List<int[]> inner = new ArrayList<>();
+            for (int[] hit : hits)
+                if (hit[0] >= clipFrom && hit[1] <= trimTo) inner.add(hit);
 
-            if (!hits.isEmpty()) {
+            if (!inner.isEmpty()) {
                 List<FastqRecord> fragments = new ArrayList<>();
-                int start   = 0;
-                int total   = hits.size() + 1;
+                int start   = 0;                       // work coordinates
+                int total   = inner.size() + 1;
                 int fragNum = 1;
 
-                for (int[] hit : hits) {
-                    int fragLen = hit[0] - start;
+                for (int[] hit : inner) {
+                    int hitStart = hit[0] - clipFrom;   // to work coordinates
+                    int fragLen  = hitStart - start;
                     if (fragLen >= minFragLen) {
                         String      name = rec.getName() + "/split" + fragNum + "of" + total;
                         FastqRecord frag = clipFragment(rec, clipFrom + start, fragLen, name);
                         if (frag != null) fragments.add(frag);
                     }
                     fragNum++;
-                    start = hit[1];
+                    start = hit[1] - clipFrom;
                 }
                 int lastLen = workLen - start;
                 if (lastLen >= minFragLen) {
@@ -488,6 +541,18 @@ public class LongReadTrimmer implements Trimmer {
 
     // -----------------------------------------------------------------------
     // Terminal clipping
+
+    /**
+     * Edit budget for a candidate match of {@code len} bases.
+     *
+     * <p>Single source of truth.  The terminal scans, the interior scan and the
+     * k-mer pre-filter reliability conditions must all agree on this number: if
+     * the pre-filter assumes a smaller budget than the matcher uses, it discards
+     * candidates the matcher would have accepted.
+     */
+    private int allowedEdits(int len) {
+        return (int) (len * maxErrorRate);
+    }
 
     /**
      * Returns the number of 5′ bases to remove.
@@ -515,16 +580,16 @@ public class LongReadTrimmer implements Trimmer {
             // Pre-filter: safe only when minOverlap >= KMER_SIZE, the adapter has no N
             // wildcards (which leave gaps in the k-mer table), and the overlap is large
             // enough that errors cannot destroy every possible shared k-mer.
-            // Reliability condition: (minOverlap - KMER_SIZE + 1) > floor(minOverlap * maxErrorRate) * KMER_SIZE
+            // Reliability condition: (minOverlap - KMER_SIZE + 1) > allowedEdits(minOverlap) * KMER_SIZE
             if (!fwdAdapterHasN[fi] && minOverlap >= KMER_SIZE
-                    && (minOverlap - KMER_SIZE + 1) > (int)(minOverlap * maxErrorRate) * KMER_SIZE
+                    && (minOverlap - KMER_SIZE + 1) > allowedEdits(minOverlap) * KMER_SIZE
                     && !hasSharedKmer(readChars, 0, maxOverlap, fwdAdapterHasKmer[fi]))
                 continue;
 
             for (int overlap = maxOverlap; overlap >= minOverlap; overlap--) {
                 if (overlap <= clipFrom) break;
                 int adapterStart = adapterLen - overlap;
-                int allowedEdits = (int) (overlap * maxErrorRate);
+                int allowedEdits = allowedEdits(overlap);
                 if (editDistance(seq, 0, adapter, adapterStart, overlap, allowedEdits)
                         <= allowedEdits) {
                     clipFrom = overlap;
@@ -540,7 +605,7 @@ public class LongReadTrimmer implements Trimmer {
             int    maxStart   = Math.min(minOverlap, seqLen - adapterLen - minOverlap);
             if (maxStart < 0) continue;
             int filterEnd = Math.min(seqLen, minOverlap + adapterLen);
-            int allowedEdits = (int) (adapterLen * maxErrorRate);
+            int allowedEdits = allowedEdits(adapterLen);
             if (!adapterHasN[ai] && adapterLen >= KMER_SIZE
                     && (adapterLen - KMER_SIZE + 1) > allowedEdits * KMER_SIZE
                     && !hasSharedKmer(readChars, 0, filterEnd, adapterHasKmer[ai]))
@@ -588,14 +653,14 @@ public class LongReadTrimmer implements Trimmer {
             int filterStart = seqLen - maxOverlap;
             // Pre-filter: same safety conditions as the 5′ scan (see findFivePrimeClip).
             if (!adapterHasN[ai] && minOverlap >= KMER_SIZE
-                    && (minOverlap - KMER_SIZE + 1) > (int)(minOverlap * maxErrorRate) * KMER_SIZE
+                    && (minOverlap - KMER_SIZE + 1) > allowedEdits(minOverlap) * KMER_SIZE
                     && !hasSharedKmer(readChars, filterStart, seqLen, adapterHasKmer[ai]))
                 continue;
 
             for (int overlap = maxOverlap; overlap >= minOverlap; overlap--) {
                 int readStart = seqLen - overlap;
                 if (readStart >= trimTo) break;
-                int allowedEdits = (int) (overlap * maxErrorRate);
+                int allowedEdits = allowedEdits(overlap);
                 if (editDistance(seq, readStart, adapter, 0, overlap, allowedEdits)
                         <= allowedEdits) {
                     trimTo = readStart;
@@ -613,7 +678,7 @@ public class LongReadTrimmer implements Trimmer {
                 int    maxStart   = seqLen - adapterLen;
                 if (minStart > maxStart) continue;
                 int filterEnd = Math.min(seqLen, maxStart + adapterLen);
-                int allowedEdits = (int) (adapterLen * maxErrorRate);
+                int allowedEdits = allowedEdits(adapterLen);
                 if (!adapterHasN[ai] && adapterLen >= KMER_SIZE
                         && (adapterLen - KMER_SIZE + 1) > allowedEdits * KMER_SIZE
                         && !hasSharedKmer(readChars, minStart, filterEnd, adapterHasKmer[ai]))
@@ -669,7 +734,11 @@ public class LongReadTrimmer implements Trimmer {
 
         char[]      seqChars   = seq.toCharArray();
         Set<Integer> candidates = new HashSet<>();
-        int scanEnd = seqLen - KMER_SIZE - terminalZone;
+        // Seed to the last position a k-mer fits.  Stopping terminalZone bases
+        // early starved the 3' side: an adapter ending d bases from the terminus
+        // only kept seeds at adapter offsets <= d + terminalZone - KMER_SIZE, so a
+        // near-terminal adapter carrying a couple of errors lost every seed.
+        int scanEnd = seqLen - KMER_SIZE;
 
         for (int rp = terminalZone; rp <= scanEnd; rp++) {
             int code = encodeKmer(seqChars, rp, KMER_SIZE);
@@ -678,8 +747,13 @@ public class LongReadTrimmer implements Trimmer {
             if (entries == null) continue;
             for (int[] e : entries) {
                 int readStart = rp - e[1]; // back-project: seed at adapter position e[1]
-                if (readStart >= terminalZone
-                        && readStart <= seqLen - terminalZone - minOverlap)
+                // No 3' upper bound: bestMatchAt already rejects any position where
+                // the full adapter does not fit, which is the only real constraint.
+                // The old bound (seqLen - terminalZone - minOverlap) excluded every
+                // adapter ending within (terminalZone + minOverlap - adapterLen) of
+                // the 3' end, a region the terminal prefix scan cannot reach either
+                // once the adapter stops hanging off the very last base.
+                if (readStart >= terminalZone)
                     candidates.add(readStart);
             }
         }
@@ -711,9 +785,13 @@ public class LongReadTrimmer implements Trimmer {
         for (String adapter : adapters) {
             int adapterLen = adapter.length();
             // Only accept the full adapter; partial interior matches are rejected.
-            if (seqLen - readStart - terminalZone < adapterLen) continue;
+            // The check is a BOUNDS check only.  It previously also subtracted
+            // terminalZone, which excluded any adapter ending within minOverlap
+            // of the 3' end -- a region the 3' terminal clip cannot reach either,
+            // because the surviving overlap there is below minOverlap.
+            if (seqLen - readStart < adapterLen) continue;
 
-            int allowedEdits = (int) (adapterLen * maxErrorRate);
+            int allowedEdits = allowedEdits(adapterLen);
             if (editDistance(seq, readStart, adapter, 0, adapterLen, allowedEdits)
                     <= allowedEdits) {
                 if (best == null || adapterLen > (best[1] - best[0]))
