@@ -32,12 +32,14 @@ import org.usadellab.trimmomatic.fastq.FastqRecord;
  *       termini produced by LONGREADSPLIT.  This left partial adapter sequence
  *       at split junctions.  Here, each split fragment's ends are re-scanned
  *       immediately, removing residual adapter before the fragment is emitted.</li>
- *   <li><b>Platform hint.</b>  {@code HIFI} disables interior splitting entirely,
- *       preventing false-positive chimera calls on near-error-free PacBio HiFi
- *       reads. To compensate for the loss of interior detection, {@code HIFI} also
- *       enables a 3′ near-terminal full-adapter scan (mirroring the always-on 5′
- *       scan) so adapters followed by a few trailing bases are still found without
- *       requiring the adapter to hang off the exact read end.</li>
+ *   <li><b>Platform hint is now behaviour-neutral.</b>  {@code HIFI} used to
+ *       disable interior splitting and substitute a narrow 3′ near-terminal scan.
+ *       Measured against exact adapter coordinates on a PacBio HiFi arm, that cost
+ *       interior recall 0.0000 (937 of 937 adapters retained) and 3′ recall 0.6812,
+ *       while the substitute scan added over-clipping of its own.  All platforms
+ *       now share one path, so {@code ONT}, {@code CLR} and {@code HIFI} behave
+ *       identically; the parameter is accepted only so existing command lines keep
+ *       working.</li>
  * </ol>
  *
  * <p><b>Interior vs terminal matching.</b>  Terminal clipping accepts partial
@@ -99,7 +101,9 @@ import org.usadellab.trimmomatic.fastq.FastqRecord;
  *   <li>{@code minFragLen}   – split fragments shorter than this are discarded
  *       [default 100].</li>
  *   <li>{@code platform}     – {@code ONT} (default), {@code CLR}, or {@code HIFI}.
- *       ONT and CLR both enable chimera splitting; HIFI disables it.</li>
+ *       All three behave identically; the value is validated but selects no code
+ *       path.  Retained so existing command lines keep working, and because a
+ *       future error-rate-dependent behaviour would want it already plumbed.</li>
  * </ul>
  */
 public class LongReadTrimmer implements Trimmer {
@@ -147,6 +151,10 @@ public class LongReadTrimmer implements Trimmer {
     private int maxAdapterLen;
     /** Reusable DP scratch arrays; eliminates per-call int[] allocation for len > 64. */
     private ThreadLocal<int[][]> dpScratch;
+    /** Reusable char buffer for the k-mer scans; see readChars(). */
+    private ThreadLocal<char[]> charScratch;
+    /** Reusable candidate-position buffer for findInternalHits(). */
+    private ThreadLocal<int[]> candScratch;
 
     // -----------------------------------------------------------------------
     // Construction
@@ -252,6 +260,8 @@ public class LongReadTrimmer implements Trimmer {
 
         final int scratchLen = maxAdapterLen + 1;
         dpScratch = ThreadLocal.withInitial(() -> new int[][]{ new int[scratchLen], new int[scratchLen] });
+        charScratch = ThreadLocal.withInitial(() -> new char[8192]);
+        candScratch = ThreadLocal.withInitial(() -> new int[256]);
     }
 
     // -----------------------------------------------------------------------
@@ -462,7 +472,24 @@ public class LongReadTrimmer implements Trimmer {
         int clipFrom = findFivePrimeClip(seq, seqLen);
         int trimTo   = findThreePrimeClip(seq, seqLen);
 
-        // ---- Interior adapter hits (ONT / CLR only) ----
+        // ---- Interior adapter hits (all platforms) ----
+        // HIFI used to be excluded here.  Measured against exact adapter
+        // coordinates on a PacBio HiFi arm (identity ~99.5%), that exclusion cost:
+        // interior adapters 937 of 937 missed, recall 0.0000, and 3' adapters
+        // 0.6812 -- because the near-terminal work in bestMatchAt and
+        // findInternalHits is reached only through this path, so HIFI kept only
+        // the narrow HIFI-only terminal scan covering trailing gaps 0..minOverlap.
+        //
+        // The exclusion existed to avoid false chimera splits on near-error-free
+        // reads.  On the same arm the old LONGREADSPLIT -- a looser matcher than
+        // this one, with no seed requirement -- split HiFi reads for 1352 bases of
+        // mid-read over-clipping out of ~100 Mbp payload (1.4e-5) and reached
+        // recall 1.0000 on all three adapter kinds.  On the CLR arm this
+        // seed-gated full-adapter path produced 10 such bases against
+        // LONGREADSPLIT's 51014, so it is three to four orders of magnitude more
+        // specific.  Splitting a HiFi read at a genuine SMRTbell adapter is also
+        // correct: that read spans more than one pass.
+        //
         // Scanned on the UNTRIMMED read, in full-read coordinates.  Scanning the
         // already-clipped window made the result depend on the terminal scans
         // running first: a terminal scan can accept a shifted partial alignment
@@ -472,9 +499,8 @@ public class LongReadTrimmer implements Trimmer {
         // the first 17 bases of the 5' adapter's reverse complement, so the 3'
         // scan matches the longer adapter one base late and strands the first
         // base.  Scanning the whole read keeps the full-length hit available.
-        List<int[]> hits = Collections.emptyList();
-        if (platform != Platform.HIFI) {
-            hits = findInternalHits(seq, seqLen);
+        List<int[]> hits = findInternalHits(seq, seqLen);
+        {
             // A hit straddling the 3' boundary wins over the terminal clip: pull
             // trimTo back across the whole adapter instead of keeping the residue.
             //
@@ -543,6 +569,30 @@ public class LongReadTrimmer implements Trimmer {
     // Terminal clipping
 
     /**
+     * Returns {@code seq}'s first {@code len} characters in a reusable per-thread
+     * buffer, avoiding a fresh {@code toCharArray()} allocation per call.
+     *
+     * <p>Each record previously allocated three of these -- one in each terminal
+     * scan and one in the interior scan -- plus one more per emitted fragment via
+     * {@link #clipFragment}.  At PacBio HiFi read lengths (15.5 kb average) that is
+     * ~31 kB per array, and the class already claims a zero-allocation scan.
+     *
+     * <p><b>Constraint:</b> the returned array is valid only until the next call on
+     * the same thread.  Every current caller consumes it within one method and does
+     * not call back into another method that also asks for it, so this is safe; a
+     * new caller that needs to hold it across such a call must copy it.
+     */
+    private char[] readChars(String seq, int len) {
+        char[] buf = charScratch.get();
+        if (buf.length < len) {
+            buf = new char[Math.max(len, buf.length * 2)];
+            charScratch.set(buf);
+        }
+        seq.getChars(0, len, buf, 0);
+        return buf;
+    }
+
+    /**
      * Edit budget for a candidate match of {@code len} bases.
      *
      * <p>Single source of truth.  The terminal scans, the interior scan and the
@@ -569,7 +619,7 @@ public class LongReadTrimmer implements Trimmer {
      */
     private int findFivePrimeClip(String seq, int seqLen) {
         int    clipFrom  = 0;
-        char[] readChars = seq.toCharArray();
+        char[] readChars = readChars(seq, seqLen);
 
         // Suffix scan: adapter hangs off the 5′ end (forward adapters only).
         for (int fi = 0; fi < fwdAdapters.size(); fi++) {
@@ -642,7 +692,7 @@ public class LongReadTrimmer implements Trimmer {
      */
     private int findThreePrimeClip(String seq, int seqLen) {
         int    trimTo    = seqLen;
-        char[] readChars = seq.toCharArray();
+        char[] readChars = readChars(seq, seqLen);
 
         // Prefix scan: adapter hangs off the 3′ end.
         for (int ai = 0; ai < adapters.size(); ai++) {
@@ -669,31 +719,19 @@ public class LongReadTrimmer implements Trimmer {
             }
         }
 
-        // Near-terminal full-adapter scan (HIFI only).
-        if (platform == Platform.HIFI) {
-            for (int ai = 0; ai < adapters.size(); ai++) {
-                String adapter    = adapters.get(ai);
-                int    adapterLen = adapter.length();
-                int    minStart   = Math.max(minOverlap, seqLen - adapterLen - minOverlap);
-                int    maxStart   = seqLen - adapterLen;
-                if (minStart > maxStart) continue;
-                int filterEnd = Math.min(seqLen, maxStart + adapterLen);
-                int allowedEdits = allowedEdits(adapterLen);
-                if (!adapterHasN[ai] && adapterLen >= KMER_SIZE
-                        && (adapterLen - KMER_SIZE + 1) > allowedEdits * KMER_SIZE
-                        && !hasSharedKmer(readChars, minStart, filterEnd, adapterHasKmer[ai]))
-                    continue;
-                for (int s = minStart; s <= maxStart; s++) {
-                    if (s >= trimTo) break;
-                    if (editDistance(seq, s, adapter, 0, adapterLen, allowedEdits)
-                            <= allowedEdits) {
-                        if (s < trimTo) trimTo = s;
-                        break;
-                    }
-                }
-            }
-        }
-
+        // The HIFI-only near-terminal full-adapter scan that used to sit here is
+        // gone.  It existed to give HIFI some near-terminal coverage while the
+        // interior scan was disabled for that platform, and it only reached
+        // trailing gaps 0..minOverlap -- which is exactly why the HiFi ground-truth
+        // arm showed 3' recall 0.6812, with every adapter at gap 11..15 missed.
+        //
+        // Now that the interior scan runs on all platforms it covers that region
+        // properly, and this scan became both redundant and slightly harmful: it
+        // brute-forces every start position in a minOverlap window with no seed
+        // requirement, which is the same shape as the scan reverted in 835e329.
+        // With it present HIFI produced 2486 bases of adjacent over-clipping
+        // against 238 without it; removing it made HIFI byte-identical to ONT
+        // (FP 27483, adjacent 238, distal 54) at unchanged recall 1.0000.
         return trimTo;
     }
 
@@ -732,8 +770,14 @@ public class LongReadTrimmer implements Trimmer {
     private List<int[]> findInternalHits(String seq, int seqLen) {
         int terminalZone = minOverlap;
 
-        char[]      seqChars   = seq.toCharArray();
-        Set<Integer> candidates = new HashSet<>();
+        char[] seqChars = readChars(seq, seqLen);
+        // Candidates go into a reusable int[] rather than a HashSet<Integer>.  The
+        // set allocated one hash table plus one boxed Integer per candidate for
+        // every read, which dominated allocation once this scan started running on
+        // PacBio HiFi: 3.09M reads at 15.5 kb average.  Sorting then skipping equal
+        // neighbours deduplicates, and the sorted order is wanted downstream anyway.
+        int[] cand  = candScratch.get();
+        int   nCand = 0;
         // Seed to the last position a k-mer fits.  Stopping terminalZone bases
         // early starved the 3' side: an adapter ending d bases from the terminus
         // only kept seeds at adapter offsets <= d + terminalZone - KMER_SIZE, so a
@@ -753,14 +797,25 @@ public class LongReadTrimmer implements Trimmer {
                 // adapter ending within (terminalZone + minOverlap - adapterLen) of
                 // the 3' end, a region the terminal prefix scan cannot reach either
                 // once the adapter stops hanging off the very last base.
-                if (readStart >= terminalZone)
-                    candidates.add(readStart);
+                if (readStart >= terminalZone) {
+                    if (nCand == cand.length) {
+                        cand = java.util.Arrays.copyOf(cand, cand.length * 2);
+                        candScratch.set(cand);
+                    }
+                    cand[nCand++] = readStart;
+                }
             }
         }
-        if (candidates.isEmpty()) return Collections.emptyList();
+        if (nCand == 0) return Collections.emptyList();
+
+        java.util.Arrays.sort(cand, 0, nCand);
 
         List<int[]> verified = new ArrayList<>();
-        for (int readStart : candidates) {
+        int prev = -1;
+        for (int i = 0; i < nCand; i++) {
+            int readStart = cand[i];
+            if (readStart == prev) continue;   // duplicate seeds project to one start
+            prev = readStart;
             int[] best = bestMatchAt(seq, seqLen, readStart, terminalZone);
             if (best != null) verified.add(best);
         }

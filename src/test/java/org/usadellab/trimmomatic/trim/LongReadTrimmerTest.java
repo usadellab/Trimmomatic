@@ -332,15 +332,51 @@ public class LongReadTrimmerTest {
         assertTrue(frags[0].getName().contains("/split"), "Name should contain /split");
     }
 
+    /**
+     * Re-scoped from {@code testHiFiPlatform_noInteriorSplit}, which asserted that
+     * HIFI must NOT split on an interior adapter.
+     *
+     * <p>That exclusion was measured against exact adapter coordinates on a PacBio
+     * HiFi arm (identity ~99.5%) and found to cost interior recall 0.0000 -- all
+     * 937 interior adapters retained -- plus 3' recall 0.6812, because the
+     * near-terminal work is reached only through the interior scan.  On the same
+     * arm the old LONGREADSPLIT, a looser matcher with no seed requirement, split
+     * HiFi reads for 1352 bases of mid-read over-clipping out of ~100 Mbp and
+     * reached recall 1.0000.  On the CLR arm this path produced 10 such bases
+     * against LONGREADSPLIT's 51014.
+     *
+     * <p>Splitting here is also the biologically correct action: a HiFi read
+     * carrying an internal SMRTbell adapter spans more than one pass.
+     */
     @Test
-    public void testHiFiPlatform_noInteriorSplit() throws Exception {
+    public void testHiFiPlatform_interiorSplit() throws Exception {
         File fa = singleAdapterFasta(SPLIT_ADAPTER);
         FastqRecord r = rec(SPLIT_PAYLOAD1 + SPLIT_ADAPTER + SPLIT_PAYLOAD2);
 
         FastqRecord[] frags = trim(faPath(fa, 0.0f, 10, 20, "HIFI"), r);
-        // HIFI disables interior splitting entirely.
-        // The adapter is in the interior and won't be caught by terminal clipping.
-        assertEquals(1, frags.length, "HIFI should not split the read");
+        assertEquals(2, frags.length, "HIFI must split on an interior adapter");
+        assertEquals(SPLIT_PAYLOAD1, frags[0].getSequence());
+        assertEquals(SPLIT_PAYLOAD2, frags[1].getSequence());
+    }
+
+    /**
+     * All three platform values must now behave identically.  The platform
+     * parameter no longer selects any code path; it is retained only so existing
+     * command lines keep working.  If that changes, this test should catch it.
+     */
+    @Test
+    public void testPlatformNoLongerChangesBehaviour() throws Exception {
+        File fa = singleAdapterFasta(SPLIT_ADAPTER);
+        String payload = SPLIT_PAYLOAD1 + SPLIT_ADAPTER + SPLIT_PAYLOAD2;
+
+        String ont = null;
+        for (String plat : new String[]{"ONT", "CLR", "HIFI"}) {
+            FastqRecord[] frags = trim(faPath(fa, 0.0f, 10, 20, plat), rec(payload));
+            StringBuilder sb = new StringBuilder();
+            for (FastqRecord f : frags) sb.append(f == null ? "-" : f.getSequence()).append('|');
+            if (ont == null) ont = sb.toString();
+            else assertEquals(ont, sb.toString(), plat + " must match ONT");
+        }
     }
 
     // ------------------------------------------------------------------
