@@ -244,7 +244,7 @@ The current trimming steps are:
 * `BARCODECORRECT`: Whitelist-correct a cell barcode against a known-good list, then append the corrected barcode and raw UMI to the read name.
 * `BDRHAPSODYCORRECT`: Whitelist-correct BD Rhapsody's three combinatorial cell label segments, then append the combined barcode and raw UMI to the read name.
 * `MAXAMBIG`: Drop the read if the fraction of N bases exceeds a maximum.
-* `LONGREADTRIM`: Unified long-read adapter trimmer. Clips terminal adapter residuals (5′ and 3′) and splits chimeric reads at internal adapter junctions in a single step, using edit distance (indel-aware) and k-mer seeding. A platform hint (`ONT`, `CLR`, `HIFI`) controls chimera splitting behaviour. **Single-end mode only.**
+* `LONGREADTRIM`: Unified long-read adapter trimmer. Clips terminal adapter residuals (5′ and 3′) and splits chimeric reads at internal adapter junctions in a single step, using edit distance (indel-aware) and k-mer seeding. **Single-end mode only.**
 * `TOPHRED33`: Convert quality scores to Phred-33.
 * `TOPHRED64`: Convert quality scores to Phred-64.
 
@@ -354,15 +354,15 @@ Most steps take one or more settings, delimited by `:`.
     * `maxErrorRate`: the maximum fraction of mismatches allowed in a confirmed adapter match (e.g. `0.10` allows 1 edit per 10 bp). N bases in either the read or the adapter are treated as wildcards.
     * `minOverlap`: (optional) the minimum number of overlapping bases required to call a **terminal** adapter match [default = 10]. Also defines the terminal exclusion zone for interior scanning. Interior matches always require the full adapter length.
     * `minFragLen`: (optional) fragments shorter than this after splitting are discarded [default = 100].
-    * `platform`: (optional) `ONT` (default), `CLR`, or `HIFI`. `ONT` and `CLR` both enable chimera splitting; `HIFI` disables interior splitting entirely to prevent false-positive chimera calls on near-error-free PacBio HiFi reads. To compensate, `HIFI` also enables a near-terminal full-adapter scan at the 3′ end (mirroring the existing 5′ scan), so adapters followed by a few trailing bases are still detected without requiring interior scanning.
+    * `platform`: (optional) `ONT` (default), `CLR`, or `HIFI`. Parsed and validated, so an unrecognised value is rejected, but it selects no behaviour: all three produce identical output. Retained for command-line compatibility, and because falling error rates may justify error-rate-dependent behaviour in future.
     * **Terminal clipping** removes adapter residuals from both the 5′ end (forward orientation only) and 3′ end (all orientations). Partial overlaps down to `minOverlap` are accepted because the adapter may hang off the read end.
-    * **Chimera splitting** (ONT / CLR only) scans the read interior for full-length adapter matches using 6-mer seeding and edit-distance verification. Partial interior matches are rejected - requiring the full adapter length prevents false-positive splits in high-error-rate reads. Each split fragment's ends are re-clipped immediately to remove junction residuals. Fragments are named `@readname/split1of2`, `@readname/split2of2`, etc.
+    * **Chimera splitting** scans the read interior for full-length adapter matches using 6-mer seeding and edit-distance verification. Partial interior matches are rejected - requiring the full adapter length prevents false-positive splits in high-error-rate reads. Each split fragment's ends are re-clipped immediately to remove junction residuals. Fragments are named `@readname/split1of2`, `@readname/split2of2`, etc.
     * Uses **edit distance** rather than Hamming distance, correctly handling the indel-dominated error profile of ONT R9/R10 and PacBio CLR chemistries. For adapter lengths ≤ 64 bp the edit distance is computed with Myers' bit-parallel algorithm (O(n), zero allocation); longer adapters use Wagner-Fischer DP with reusable per-thread scratch arrays. Terminal scans are further accelerated by a 6-mer pre-filter that skips adapters sharing no k-mer with the read's terminal region before invoking edit distance.
     * **Single-end mode only.** Raises an error if invoked in paired-end mode.
     * Recommended pipeline: `LONGREADTRIM:<fasta>:<errorRate>:<minOverlap>:<minFragLen>:<platform>  MINLEN:<length>`
     * Example: `LONGREADTRIM:adapters/ONT-LSK114.fa:0.10:10:100:ONT` - ONT R10.4.1 / Kit 14 reads.
-    * Example: `LONGREADTRIM:adapters/PacBio-Sequel.fa:0.05:10:100:HIFI` - PacBio HiFi / CCS reads (no chimera splitting).
-    * Example: `LONGREADTRIM:adapters/PacBio-RSII.fa:0.15:10:100:CLR` - PacBio CLR reads (chimera splitting enabled).
+    * Example: `LONGREADTRIM:adapters/PacBio-Sequel.fa:0.05:10:100:HIFI` - PacBio HiFi / CCS reads.
+    * Example: `LONGREADTRIM:adapters/PacBio-RSII.fa:0.15:10:100:CLR` - PacBio CLR reads.
     * Trimmomatic ships adapter files for the most common long-read platforms in the `adapters/` directory:
         * `adapters/ONT-LSK108-LSK110.fa` - Oxford Nanopore SQK-LSK108, LSK109, LSK110 (R9.4 / R9.4.1). `maxErrorRate` `0.15`, `platform` `ONT`.
         * `adapters/ONT-LSK112.fa` - Oxford Nanopore SQK-LSK112 (R10.3). `maxErrorRate` `0.10`, `platform` `ONT`.

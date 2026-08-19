@@ -32,14 +32,15 @@ import org.usadellab.trimmomatic.fastq.FastqRecord;
  *       termini produced by LONGREADSPLIT.  This left partial adapter sequence
  *       at split junctions.  Here, each split fragment's ends are re-scanned
  *       immediately, removing residual adapter before the fragment is emitted.</li>
- *   <li><b>Platform hint is now behaviour-neutral.</b>  {@code HIFI} used to
- *       disable interior splitting and substitute a narrow 3′ near-terminal scan.
- *       Measured against exact adapter coordinates on a PacBio HiFi arm, that cost
- *       interior recall 0.0000 (937 of 937 adapters retained) and 3′ recall 0.6812,
- *       while the substitute scan added over-clipping of its own.  All platforms
- *       now share one path, so {@code ONT}, {@code CLR} and {@code HIFI} behave
- *       identically; the parameter is accepted only so existing command lines keep
- *       working.</li>
+ *   <li><b>Platform hint is behaviour-neutral.</b>  {@code ONT}, {@code CLR} and
+ *       {@code HIFI} share one path and produce identical output.  The parameter is
+ *       parsed and validated, so an unrecognised value is rejected, but nothing
+ *       branches on it.  Gating interior splitting by platform was measured against
+ *       exact adapter coordinates and costs interior recall entirely, plus 3′ recall
+ *       with it, since the near-terminal logic shares the interior scan's code path.
+ *       Specificity comes from the seed and full-adapter requirements below, which
+ *       hold mid-read over-clipping to 0 and 10 bases across an error range from
+ *       0.5% to 15%.</li>
  * </ol>
  *
  * <p><b>Interior vs terminal matching.</b>  Terminal clipping accepts partial
@@ -71,8 +72,8 @@ import org.usadellab.trimmomatic.fastq.FastqRecord;
  * Rounding instead of truncating (18 bp: 2 edits to 3) cleared almost all of
  * them, but multiplied genuine over-clipping of payload roughly eightfold and
  * lowered overall F1, because a looser threshold admits adapter-like payload just
- * as readily as degraded adapter.  This is the same failure mode that caused the
- * brute-force 3' near-terminal scan to be reverted in 835e329.
+ * as readily as degraded adapter.  Any unseeded brute-force scan over a window of
+ * start positions fails the same way, which is why neither terminal scan uses one.
  *
  * <p>Closing that gap needs a discriminator other than the edit threshold —
  * base qualities at the match, a positional prior, or complexity weighting so
@@ -472,23 +473,20 @@ public class LongReadTrimmer implements Trimmer {
         int clipFrom = findFivePrimeClip(seq, seqLen);
         int trimTo   = findThreePrimeClip(seq, seqLen);
 
-        // ---- Interior adapter hits (all platforms) ----
-        // HIFI used to be excluded here.  Measured against exact adapter
-        // coordinates on a PacBio HiFi arm (identity ~99.5%), that exclusion cost:
-        // interior adapters 937 of 937 missed, recall 0.0000, and 3' adapters
-        // 0.6812 -- because the near-terminal work in bestMatchAt and
-        // findInternalHits is reached only through this path, so HIFI kept only
-        // the narrow HIFI-only terminal scan covering trailing gaps 0..minOverlap.
+        // ---- Interior adapter hits ----
+        // Unconditional: no platform is excluded.  Excluding one costs interior
+        // recall entirely, and 3' recall with it, because the near-terminal work in
+        // bestMatchAt and findInternalHits is reached only through this path.
+        // Measured against exact adapter coordinates at ~99.5% identity, an
+        // exclusion here missed 937 of 937 interior adapters and dropped 3' recall
+        // to 0.6812.
         //
-        // The exclusion existed to avoid false chimera splits on near-error-free
-        // reads.  On the same arm the old LONGREADSPLIT -- a looser matcher than
-        // this one, with no seed requirement -- split HiFi reads for 1352 bases of
-        // mid-read over-clipping out of ~100 Mbp payload (1.4e-5) and reached
-        // recall 1.0000 on all three adapter kinds.  On the CLR arm this
-        // seed-gated full-adapter path produced 10 such bases against
-        // LONGREADSPLIT's 51014, so it is three to four orders of magnitude more
-        // specific.  Splitting a HiFi read at a genuine SMRTbell adapter is also
-        // correct: that read spans more than one pass.
+        // Specificity comes from the seed and full-adapter requirements instead, and
+        // it is what makes an unconditional scan safe.  Against LONGREADSPLIT, whose
+        // matcher is looser and needs no seed, this path produces 0 bases of mid-read
+        // over-clipping where LONGREADSPLIT produces 1352 at ~99.5% identity, and 10
+        // against 51014 at 85% identity, both out of ~100 Mbp of payload, at equal
+        // recall 1.0000.
         //
         // Scanned on the UNTRIMMED read, in full-read coordinates.  Scanning the
         // already-clipped window made the result depend on the terminal scans
@@ -676,19 +674,15 @@ public class LongReadTrimmer implements Trimmer {
     /**
      * Returns the 3′ keep boundary (exclusive): retain seq[0..trimTo-1].
      *
-     * <p>Two scans are performed:
-     * <ol>
-     *   <li><b>Prefix scan</b> (all orientations): the adapter may hang off the read's
-     *       3′ end; partial overlaps down to {@code minOverlap} are accepted.</li>
-     *   <li><b>Near-terminal full-adapter scan</b> ({@code HIFI} platform only, all
-     *       orientations): symmetric counterpart to the 5′ near-terminal scan, detecting
-     *       full adapters that end a few bases before the true 3′ terminus (e.g. a
-     *       trailing barcode or fill bases after the adapter) rather than hanging off
-     *       the very end. Restricted to HIFI because at ONT/CLR error rates this scan
-     *       produced false-positive over-clipping on real payload sequence and was
-     *       removed for those platforms; HIFI's much lower error rate makes a chance
-     *       match within the allowed edit distance far less likely.</li>
-     * </ol>
+     * <p>One scan is performed: a <b>prefix scan</b> over all orientations, where the
+     * adapter may hang off the read's 3′ end and partial overlaps down to
+     * {@code minOverlap} are accepted.
+     *
+     * <p>Adapters that end a few bases before the true 3′ terminus (a trailing barcode
+     * or fill bases after the adapter, so the adapter does not hang off the very end)
+     * are not this method's responsibility. {@link #findInternalHits} covers them: it
+     * runs on all platforms, requires a k-mer seed and the complete adapter, and its
+     * hits are reconciled against {@code trimTo} by the caller.
      */
     private int findThreePrimeClip(String seq, int seqLen) {
         int    trimTo    = seqLen;
@@ -719,19 +713,12 @@ public class LongReadTrimmer implements Trimmer {
             }
         }
 
-        // The HIFI-only near-terminal full-adapter scan that used to sit here is
-        // gone.  It existed to give HIFI some near-terminal coverage while the
-        // interior scan was disabled for that platform, and it only reached
-        // trailing gaps 0..minOverlap -- which is exactly why the HiFi ground-truth
-        // arm showed 3' recall 0.6812, with every adapter at gap 11..15 missed.
-        //
-        // Now that the interior scan runs on all platforms it covers that region
-        // properly, and this scan became both redundant and slightly harmful: it
-        // brute-forces every start position in a minOverlap window with no seed
-        // requirement, which is the same shape as the scan reverted in 835e329.
-        // With it present HIFI produced 2486 bases of adjacent over-clipping
-        // against 238 without it; removing it made HIFI byte-identical to ONT
-        // (FP 27483, adjacent 238, distal 54) at unchanged recall 1.0000.
+        // Deliberately no second, near-terminal scan here.  findInternalHits covers
+        // that region on every platform, with a k-mer seed and a full-adapter
+        // requirement.  A brute-force scan over every start position in a minOverlap
+        // window, with no seed requirement, costs precision for nothing: measured on
+        // the HiFi ground truth it produced 2486 bases of adjacent over-clipping
+        // against 238 without it, at identical recall 1.0000.
         return trimTo;
     }
 
