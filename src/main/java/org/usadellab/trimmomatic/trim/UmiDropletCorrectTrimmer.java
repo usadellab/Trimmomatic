@@ -13,7 +13,7 @@ import org.usadellab.trimmomatic.fastq.FastqRecord;
 import org.usadellab.trimmomatic.util.compression.CompressionFormat;
 
 /**
- * BARCODECORRECT:<whitelistFile>:<cbLength>:<umiLength>:<maxMismatch>[:<separator>]
+ * UMIDROPLETCORRECT:<whitelistFile>:<cbLength>:<umiLength>:<maxMismatch>[:<separator>]
  *
  * Whitelist-corrects a cell barcode of <cbLength> bases against a known-good
  * barcode list (one sequence per line, plain text or .gz/.bz2/.zip), then
@@ -51,10 +51,10 @@ import org.usadellab.trimmomatic.util.compression.CompressionFormat;
  * (cell, gene) after alignment, which a pre-alignment trimmer doesn't have.
  *
  * Example:
- *   BARCODECORRECT:3M-february-2018.txt.gz:16:12:1
+ *   UMIDROPLETCORRECT:3M-february-2018.txt.gz:16:12:1
  *     - 10x v3 chemistry: 16bp CB (whitelist-corrected, <=1 mismatch), 12bp raw UMI
  */
-public class BarcodeCorrectTrimmer extends AbstractSingleRecordTrimmer {
+public class UmiDropletCorrectTrimmer extends AbstractSingleRecordTrimmer {
     private static final int MAX_SUPPORTED_MISMATCH = 1;
     private static final char[] BASES = { 'A', 'C', 'G', 'T' };
 
@@ -64,7 +64,7 @@ public class BarcodeCorrectTrimmer extends AbstractSingleRecordTrimmer {
     private final String separator;
     private final Set<String> whitelist;
 
-    public BarcodeCorrectTrimmer(String args) throws IOException {
+    public UmiDropletCorrectTrimmer(String args) throws IOException {
         // The whitelist path can itself contain colons (a Windows drive letter,
         // "C:\...", is the common real case), which breaks a naive split(":")
         // into <path>:<cbLength>:<umiLength>:<maxMismatch>[:<separator>] -- the
@@ -78,14 +78,14 @@ public class BarcodeCorrectTrimmer extends AbstractSingleRecordTrimmer {
         String[] tokens = args.split(":");
         if (tokens.length < 4)
             throw new IllegalArgumentException(
-                    "BARCODECORRECT requires <whitelistFile>:<cbLength>:<umiLength>:<maxMismatch>, got: " + args);
+                    "UMIDROPLETCORRECT requires <whitelistFile>:<cbLength>:<umiLength>:<maxMismatch>, got: " + args);
 
         boolean hasSeparator = !isInteger(tokens[tokens.length - 1]);
         int trailingCount = hasSeparator ? 4 : 3;
         int pathTokenCount = tokens.length - trailingCount;
         if (pathTokenCount < 1)
             throw new IllegalArgumentException(
-                    "BARCODECORRECT requires <whitelistFile>:<cbLength>:<umiLength>:<maxMismatch>, got: " + args);
+                    "UMIDROPLETCORRECT requires <whitelistFile>:<cbLength>:<umiLength>:<maxMismatch>, got: " + args);
 
         String whitelistPath = String.join(":", java.util.Arrays.copyOfRange(tokens, 0, pathTokenCount));
         cbLength = Integer.parseInt(tokens[pathTokenCount]);
@@ -94,12 +94,12 @@ public class BarcodeCorrectTrimmer extends AbstractSingleRecordTrimmer {
         separator = hasSeparator ? tokens[pathTokenCount + 3] : "_";
 
         if (cbLength < 1)
-            throw new IllegalArgumentException("BARCODECORRECT cbLength must be >= 1, got: " + cbLength);
+            throw new IllegalArgumentException("UMIDROPLETCORRECT cbLength must be >= 1, got: " + cbLength);
         if (umiLength < 1)
-            throw new IllegalArgumentException("BARCODECORRECT umiLength must be >= 1, got: " + umiLength);
+            throw new IllegalArgumentException("UMIDROPLETCORRECT umiLength must be >= 1, got: " + umiLength);
         if (maxMismatch < 0 || maxMismatch > MAX_SUPPORTED_MISMATCH)
             throw new IllegalArgumentException(
-                    "BARCODECORRECT maxMismatch must be between 0 and " + MAX_SUPPORTED_MISMATCH
+                    "UMIDROPLETCORRECT maxMismatch must be between 0 and " + MAX_SUPPORTED_MISMATCH
                     + " (got " + maxMismatch + "); larger neighbourhoods aren't worth it for a plain Hamming correction");
 
         whitelist = loadWhitelist(whitelistPath);
@@ -130,7 +130,7 @@ public class BarcodeCorrectTrimmer extends AbstractSingleRecordTrimmer {
         }
 
         if (set.isEmpty())
-            throw new IllegalArgumentException("BARCODECORRECT whitelist file is empty or unreadable: " + path);
+            throw new IllegalArgumentException("UMIDROPLETCORRECT whitelist file is empty or unreadable: " + path);
 
         return set;
     }
@@ -143,7 +143,7 @@ public class BarcodeCorrectTrimmer extends AbstractSingleRecordTrimmer {
     public FastqRecord[] processRecords(FastqRecord[] in) {
         if (in != null && in.length > 1)
             throw new IllegalStateException(
-                    "BARCODECORRECT cannot run in symmetric paired-end mode: it would rename each mate "
+                    "UMIDROPLETCORRECT cannot run in symmetric paired-end mode: it would rename each mate "
                     + "independently from its own leading bases, desynchronising mate names. "
                     + "Route it to one mate only, e.g. via -pe1steps/-pe2steps or -technicalread.");
         return super.processRecords(in);

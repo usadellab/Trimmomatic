@@ -14,7 +14,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.usadellab.trimmomatic.fastq.FastqRecord;
 
-public class BdRhapsodyCorrectTrimmerTest {
+public class UmiRhapsodyCorrectTrimmerTest {
 
     // Arbitrary but distinct 9bp codes -- the trimmer never validates L1/L2
     // content, only their length, so filler bases can be anything.
@@ -65,7 +65,7 @@ public class BdRhapsodyCorrectTrimmerTest {
     @Test
     public void testNominalRead_exactMatch() throws Exception {
         File wl = writeWhitelistDir(CLS1, CLS2, CLS3);
-        BdRhapsodyCorrectTrimmer trimmer = new BdRhapsodyCorrectTrimmer(wl.getPath() + ":1");
+        UmiRhapsodyCorrectTrimmer trimmer = new UmiRhapsodyCorrectTrimmer(wl.getPath() + ":1");
 
         FastqRecord result = trimmer.processRecord(makeRecord("r1", nominalRead()));
 
@@ -77,7 +77,7 @@ public class BdRhapsodyCorrectTrimmerTest {
     @Test
     public void testPayloadAfterUmi_survives() throws Exception {
         File wl = writeWhitelistDir(CLS1, CLS2, CLS3);
-        BdRhapsodyCorrectTrimmer trimmer = new BdRhapsodyCorrectTrimmer(wl.getPath() + ":1");
+        UmiRhapsodyCorrectTrimmer trimmer = new UmiRhapsodyCorrectTrimmer(wl.getPath() + ":1");
 
         FastqRecord result = trimmer.processRecord(makeRecord("r1", nominalRead() + "TTTTT"));
 
@@ -91,7 +91,7 @@ public class BdRhapsodyCorrectTrimmerTest {
     @Test
     public void testOneBaseDeletion_offsetMinusOne_stillLocatesCls3AndUmi() throws Exception {
         File wl = writeWhitelistDir(CLS1, CLS2, CLS3);
-        BdRhapsodyCorrectTrimmer trimmer = new BdRhapsodyCorrectTrimmer(wl.getPath() + ":1");
+        UmiRhapsodyCorrectTrimmer trimmer = new UmiRhapsodyCorrectTrimmer(wl.getPath() + ":1");
 
         String shortL1 = L1_FILLER.substring(1); // 11bp instead of 12 -- 1bp deletion
         // A real read stays at its fixed cycle length regardless of an internal
@@ -108,7 +108,7 @@ public class BdRhapsodyCorrectTrimmerTest {
     @Test
     public void testOneBaseInsertion_offsetPlusOne_stillLocatesCls3AndUmi() throws Exception {
         File wl = writeWhitelistDir(CLS1, CLS2, CLS3);
-        BdRhapsodyCorrectTrimmer trimmer = new BdRhapsodyCorrectTrimmer(wl.getPath() + ":1");
+        UmiRhapsodyCorrectTrimmer trimmer = new UmiRhapsodyCorrectTrimmer(wl.getPath() + ":1");
 
         String longL1 = L1_FILLER + "N"; // 13bp instead of 12 -- 1bp insertion
         String seq = CLS1 + longL1 + CLS2 + L2_FILLER + CLS3 + UMI;
@@ -121,7 +121,7 @@ public class BdRhapsodyCorrectTrimmerTest {
     @Test
     public void testTwoBaseDeletion_offsetMinusTwo_stillLocatesCls3AndUmi() throws Exception {
         File wl = writeWhitelistDir(CLS1, CLS2, CLS3);
-        BdRhapsodyCorrectTrimmer trimmer = new BdRhapsodyCorrectTrimmer(wl.getPath() + ":1");
+        UmiRhapsodyCorrectTrimmer trimmer = new UmiRhapsodyCorrectTrimmer(wl.getPath() + ":1");
 
         String shortL1 = L1_FILLER.substring(2); // 10bp instead of 12 -- 2bp deletion
         String seq = CLS1 + shortL1 + CLS2 + L2_FILLER + CLS3 + UMI + "AA"; // pad back to 60bp, see comment above
@@ -134,7 +134,7 @@ public class BdRhapsodyCorrectTrimmerTest {
     @Test
     public void testTwoBaseInsertion_offsetPlusTwo_stillLocatesCls3AndUmi() throws Exception {
         File wl = writeWhitelistDir(CLS1, CLS2, CLS3);
-        BdRhapsodyCorrectTrimmer trimmer = new BdRhapsodyCorrectTrimmer(wl.getPath() + ":1");
+        UmiRhapsodyCorrectTrimmer trimmer = new UmiRhapsodyCorrectTrimmer(wl.getPath() + ":1");
 
         String longL1 = L1_FILLER + "NN"; // 14bp instead of 12 -- 2bp insertion
         String seq = CLS1 + longL1 + CLS2 + L2_FILLER + CLS3 + UMI;
@@ -150,7 +150,7 @@ public class BdRhapsodyCorrectTrimmerTest {
     @Test
     public void testCls1OneMismatch_corrects() throws Exception {
         File wl = writeWhitelistDir(CLS1, CLS2, CLS3);
-        BdRhapsodyCorrectTrimmer trimmer = new BdRhapsodyCorrectTrimmer(wl.getPath() + ":1");
+        UmiRhapsodyCorrectTrimmer trimmer = new UmiRhapsodyCorrectTrimmer(wl.getPath() + ":1");
 
         String rawCls1 = "TAACCCGGT"; // position 0: A -> T
         String seq = rawCls1 + L1_FILLER + CLS2 + L2_FILLER + CLS3 + UMI;
@@ -164,7 +164,7 @@ public class BdRhapsodyCorrectTrimmerTest {
     @Test
     public void testCls2OneMismatch_noOffsetNeeded_correctsAtNominal() throws Exception {
         File wl = writeWhitelistDir(CLS1, CLS2, CLS3);
-        BdRhapsodyCorrectTrimmer trimmer = new BdRhapsodyCorrectTrimmer(wl.getPath() + ":1");
+        UmiRhapsodyCorrectTrimmer trimmer = new UmiRhapsodyCorrectTrimmer(wl.getPath() + ":1");
 
         String rawCls2 = "ATTGGGCCA"; // position 0: T -> A
         String seq = CLS1 + L1_FILLER + rawCls2 + L2_FILLER + CLS3 + UMI;
@@ -177,7 +177,7 @@ public class BdRhapsodyCorrectTrimmerTest {
     @Test
     public void testCls3OneMismatch_corrects() throws Exception {
         File wl = writeWhitelistDir(CLS1, CLS2, CLS3);
-        BdRhapsodyCorrectTrimmer trimmer = new BdRhapsodyCorrectTrimmer(wl.getPath() + ":1");
+        UmiRhapsodyCorrectTrimmer trimmer = new UmiRhapsodyCorrectTrimmer(wl.getPath() + ":1");
 
         String rawCls3 = "AGGTTTAAC"; // position 0: G -> A
         String seq = CLS1 + L1_FILLER + CLS2 + L2_FILLER + rawCls3 + UMI;
@@ -193,7 +193,7 @@ public class BdRhapsodyCorrectTrimmerTest {
     @Test
     public void testCls1TwoMismatches_beyondTolerance_drops() throws Exception {
         File wl = writeWhitelistDir(CLS1, CLS2, CLS3);
-        BdRhapsodyCorrectTrimmer trimmer = new BdRhapsodyCorrectTrimmer(wl.getPath() + ":1");
+        UmiRhapsodyCorrectTrimmer trimmer = new UmiRhapsodyCorrectTrimmer(wl.getPath() + ":1");
 
         String rawCls1 = "TTACCCGGT"; // positions 0 and 1 both wrong
         String seq = rawCls1 + L1_FILLER + CLS2 + L2_FILLER + CLS3 + UMI;
@@ -203,7 +203,7 @@ public class BdRhapsodyCorrectTrimmerTest {
     @Test
     public void testCls2Unresolvable_dropsEvenThoughCls1AndCls3Match() throws Exception {
         File wl = writeWhitelistDir(CLS1, CLS2, CLS3);
-        BdRhapsodyCorrectTrimmer trimmer = new BdRhapsodyCorrectTrimmer(wl.getPath() + ":1");
+        UmiRhapsodyCorrectTrimmer trimmer = new UmiRhapsodyCorrectTrimmer(wl.getPath() + ":1");
 
         String rawCls2 = "AATGGGCCA"; // two mismatches, no offset explains it either
         String seq = CLS1 + L1_FILLER + rawCls2 + L2_FILLER + CLS3 + UMI;
@@ -213,7 +213,7 @@ public class BdRhapsodyCorrectTrimmerTest {
     @Test
     public void testCls3TwoMismatches_beyondTolerance_drops() throws Exception {
         File wl = writeWhitelistDir(CLS1, CLS2, CLS3);
-        BdRhapsodyCorrectTrimmer trimmer = new BdRhapsodyCorrectTrimmer(wl.getPath() + ":1");
+        UmiRhapsodyCorrectTrimmer trimmer = new UmiRhapsodyCorrectTrimmer(wl.getPath() + ":1");
 
         String rawCls3 = "AAGTTTAAC"; // positions 0 and 1 both wrong
         String seq = CLS1 + L1_FILLER + CLS2 + L2_FILLER + rawCls3 + UMI;
@@ -223,7 +223,7 @@ public class BdRhapsodyCorrectTrimmerTest {
     @Test
     public void testShorterThan60bp_drops() throws Exception {
         File wl = writeWhitelistDir(CLS1, CLS2, CLS3);
-        BdRhapsodyCorrectTrimmer trimmer = new BdRhapsodyCorrectTrimmer(wl.getPath() + ":1");
+        UmiRhapsodyCorrectTrimmer trimmer = new UmiRhapsodyCorrectTrimmer(wl.getPath() + ":1");
 
         String seq = nominalRead().substring(0, 59); // one short of the full construct
         assertNull(trimmer.processRecord(makeRecord("r1", seq)));
@@ -235,7 +235,7 @@ public class BdRhapsodyCorrectTrimmerTest {
     @Test
     public void testMaxMismatchZero_onlyExactMatchWorks() throws Exception {
         File wl = writeWhitelistDir(CLS1, CLS2, CLS3);
-        BdRhapsodyCorrectTrimmer trimmer = new BdRhapsodyCorrectTrimmer(wl.getPath() + ":0");
+        UmiRhapsodyCorrectTrimmer trimmer = new UmiRhapsodyCorrectTrimmer(wl.getPath() + ":0");
 
         String rawCls1 = "TAACCCGGT"; // 1 mismatch -- should NOT correct at maxMismatch=0
         String seq = rawCls1 + L1_FILLER + CLS2 + L2_FILLER + CLS3 + UMI;
@@ -248,19 +248,19 @@ public class BdRhapsodyCorrectTrimmerTest {
     public void testMismatchAboveSupportedCap_throws() throws Exception {
         File wl = writeWhitelistDir(CLS1, CLS2, CLS3);
         assertThrows(IllegalArgumentException.class,
-                () -> new BdRhapsodyCorrectTrimmer(wl.getPath() + ":2"));
+                () -> new UmiRhapsodyCorrectTrimmer(wl.getPath() + ":2"));
     }
 
     @Test
     public void testMissingRequiredArgs_throws() throws Exception {
         assertThrows(IllegalArgumentException.class,
-                () -> new BdRhapsodyCorrectTrimmer("onlyOneToken"));
+                () -> new UmiRhapsodyCorrectTrimmer("onlyOneToken"));
     }
 
     @Test
     public void testCustomSeparator() throws Exception {
         File wl = writeWhitelistDir(CLS1, CLS2, CLS3);
-        BdRhapsodyCorrectTrimmer trimmer = new BdRhapsodyCorrectTrimmer(wl.getPath() + ":1:__");
+        UmiRhapsodyCorrectTrimmer trimmer = new UmiRhapsodyCorrectTrimmer(wl.getPath() + ":1:__");
 
         FastqRecord result = trimmer.processRecord(makeRecord("r1", nominalRead()));
 
@@ -274,7 +274,7 @@ public class BdRhapsodyCorrectTrimmerTest {
         dir.mkdirs();
         writeFile(new File(dir, "CLS1.txt"), CLS1);
         // CLS2.txt / CLS3.txt intentionally missing
-        assertThrows(IOException.class, () -> new BdRhapsodyCorrectTrimmer(dir.getPath() + ":1"));
+        assertThrows(IOException.class, () -> new UmiRhapsodyCorrectTrimmer(dir.getPath() + ":1"));
     }
 
     // ------------------------------------------------------------------
@@ -283,7 +283,7 @@ public class BdRhapsodyCorrectTrimmerTest {
     @Test
     public void testExplicitV1Token_behavesSameAsDefault() throws Exception {
         File wl = writeWhitelistDir(CLS1, CLS2, CLS3);
-        BdRhapsodyCorrectTrimmer trimmer = new BdRhapsodyCorrectTrimmer("V1:" + wl.getPath() + ":1");
+        UmiRhapsodyCorrectTrimmer trimmer = new UmiRhapsodyCorrectTrimmer("V1:" + wl.getPath() + ":1");
 
         FastqRecord result = trimmer.processRecord(makeRecord("r1", nominalRead()));
 
@@ -294,7 +294,7 @@ public class BdRhapsodyCorrectTrimmerTest {
     @Test
     public void testEnhancedV2_zeroInset_exactMatch() throws Exception {
         File wl = writeWhitelistDir(CLS1, CLS2, CLS3);
-        BdRhapsodyCorrectTrimmer trimmer = new BdRhapsodyCorrectTrimmer("ENHANCEDV2:" + wl.getPath() + ":1");
+        UmiRhapsodyCorrectTrimmer trimmer = new UmiRhapsodyCorrectTrimmer("ENHANCEDV2:" + wl.getPath() + ":1");
 
         FastqRecord result = trimmer.processRecord(makeRecord("r1", nominalEnhancedV2Read()));
 
@@ -306,7 +306,7 @@ public class BdRhapsodyCorrectTrimmerTest {
     @Test
     public void testEnhancedV2_insetOfOne_locatesCorrectly() throws Exception {
         File wl = writeWhitelistDir(CLS1, CLS2, CLS3);
-        BdRhapsodyCorrectTrimmer trimmer = new BdRhapsodyCorrectTrimmer("ENHANCEDV2:" + wl.getPath() + ":1");
+        UmiRhapsodyCorrectTrimmer trimmer = new UmiRhapsodyCorrectTrimmer("ENHANCEDV2:" + wl.getPath() + ":1");
 
         String seq = "A" + nominalEnhancedV2Read(); // 1bp prefix inset
         FastqRecord result = trimmer.processRecord(makeRecord("r1", seq));
@@ -318,7 +318,7 @@ public class BdRhapsodyCorrectTrimmerTest {
     @Test
     public void testEnhancedV2_insetOfTwo_locatesCorrectly() throws Exception {
         File wl = writeWhitelistDir(CLS1, CLS2, CLS3);
-        BdRhapsodyCorrectTrimmer trimmer = new BdRhapsodyCorrectTrimmer("ENHANCEDV2:" + wl.getPath() + ":1");
+        UmiRhapsodyCorrectTrimmer trimmer = new UmiRhapsodyCorrectTrimmer("ENHANCEDV2:" + wl.getPath() + ":1");
 
         String seq = "GT" + nominalEnhancedV2Read(); // 2bp prefix inset
         FastqRecord result = trimmer.processRecord(makeRecord("r1", seq));
@@ -330,7 +330,7 @@ public class BdRhapsodyCorrectTrimmerTest {
     @Test
     public void testEnhancedV2_insetOfThree_locatesCorrectly() throws Exception {
         File wl = writeWhitelistDir(CLS1, CLS2, CLS3);
-        BdRhapsodyCorrectTrimmer trimmer = new BdRhapsodyCorrectTrimmer("ENHANCEDV2:" + wl.getPath() + ":1");
+        UmiRhapsodyCorrectTrimmer trimmer = new UmiRhapsodyCorrectTrimmer("ENHANCEDV2:" + wl.getPath() + ":1");
 
         String seq = "TCA" + nominalEnhancedV2Read(); // 3bp prefix inset
         FastqRecord result = trimmer.processRecord(makeRecord("r1", seq));
@@ -342,7 +342,7 @@ public class BdRhapsodyCorrectTrimmerTest {
     @Test
     public void testEnhancedV2_cls2OneMismatch_correctsAtNominalOffset() throws Exception {
         File wl = writeWhitelistDir(CLS1, CLS2, CLS3);
-        BdRhapsodyCorrectTrimmer trimmer = new BdRhapsodyCorrectTrimmer("ENHANCEDV2:" + wl.getPath() + ":1");
+        UmiRhapsodyCorrectTrimmer trimmer = new UmiRhapsodyCorrectTrimmer("ENHANCEDV2:" + wl.getPath() + ":1");
 
         String rawCls2 = "ATTGGGCCA"; // position 0: T -> A
         String seq = CLS1 + L1_FILLER_ENHANCEDV2 + rawCls2 + L2_FILLER_ENHANCEDV2 + CLS3 + UMI;
@@ -355,7 +355,7 @@ public class BdRhapsodyCorrectTrimmerTest {
     @Test
     public void testEnhancedV2_cls1Unresolvable_drops() throws Exception {
         File wl = writeWhitelistDir(CLS1, CLS2, CLS3);
-        BdRhapsodyCorrectTrimmer trimmer = new BdRhapsodyCorrectTrimmer("ENHANCEDV2:" + wl.getPath() + ":1");
+        UmiRhapsodyCorrectTrimmer trimmer = new UmiRhapsodyCorrectTrimmer("ENHANCEDV2:" + wl.getPath() + ":1");
 
         // No inset candidate (0-3) lines up CLS1 with the whitelist entry, and
         // no offset qualifies as a 1-mismatch neighbour of it either.
@@ -370,7 +370,7 @@ public class BdRhapsodyCorrectTrimmerTest {
     @Test
     public void testProcessRecords_twoElementArray_throws() throws Exception {
         File wl = writeWhitelistDir(CLS1, CLS2, CLS3);
-        BdRhapsodyCorrectTrimmer trimmer = new BdRhapsodyCorrectTrimmer(wl.getPath() + ":1");
+        UmiRhapsodyCorrectTrimmer trimmer = new UmiRhapsodyCorrectTrimmer(wl.getPath() + ":1");
 
         FastqRecord a = makeRecord("a", nominalRead());
         FastqRecord b = makeRecord("b", nominalRead());
@@ -380,7 +380,7 @@ public class BdRhapsodyCorrectTrimmerTest {
     @Test
     public void testProcessRecords_singleElementArray_works() throws Exception {
         File wl = writeWhitelistDir(CLS1, CLS2, CLS3);
-        BdRhapsodyCorrectTrimmer trimmer = new BdRhapsodyCorrectTrimmer(wl.getPath() + ":1");
+        UmiRhapsodyCorrectTrimmer trimmer = new UmiRhapsodyCorrectTrimmer(wl.getPath() + ":1");
 
         FastqRecord[] in = { makeRecord("r1", nominalRead()) };
         FastqRecord[] result = trimmer.processRecords(in);
