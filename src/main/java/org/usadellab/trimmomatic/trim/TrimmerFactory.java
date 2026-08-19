@@ -86,6 +86,15 @@ public class TrimmerFactory {
 		if (trimmerName.equals("UMIRHAPSODYCORRECT"))
 			return new UmiRhapsodyCorrectTrimmer(args);
 
+		if (trimmerName.equals("UMILONGREADEXTRACT"))
+			return new UmiLongReadExtractTrimmer(args);
+
+		if (trimmerName.equals("UMIDIMERCORRECT"))
+			return new UmiDimerCorrectTrimmer(args);
+
+		if (trimmerName.equals("UMIINDEXMERGE"))
+			return new UmiIndexMergeTrimmer(args);
+
 		if (trimmerName.equals("LONGREADTRIM"))
 			return new LongReadTrimmer(args);
 

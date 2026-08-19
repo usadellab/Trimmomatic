@@ -106,3 +106,9 @@ Version 0.42: Feature: POLYX trimmer - trims homopolymer runs from the 3' end, d
               Performance: LongReadTrimmer adapter matching much faster via bit-parallel edit distance and k-mer pre-filtering (~22% CPU, ~28% peak RSS on a 3.5M-read ONT benchmark)
               Performance: Parser block size capped by both record count and byte volume, preventing heap exhaustion on long-read inputs
               Build: -version now appends the git commit hash and a -dirty suffix when uncommitted changes are present
+              Rename: BARCODECORRECT to UMIDROPLETCORRECT, BDRHAPSODYCORRECT to UMIRHAPSODYCORRECT, so every UMI step name starts with UMI
+
+Version 0.43: Feature: UMILONGREADEXTRACT trimmer: generic UMI extractor for ONT/PacBio long-read amplicon cassettes, with anchor search and indel-tolerant offset matching
+              Feature: UMIDIMERCORRECT trimmer: whitelist-corrects dimer-block cell barcodes (scBUC-seq/scCOLOR-seq)
+              Feature: UMIINDEXMERGE trimmer: merges a UMI from a separate index-read FASTQ into the read name (Illumina xGen UDI-UMI); safe in symmetric paired-end mode
+              Docs: README UMI section reorganised with a platform/protocol to step decision table

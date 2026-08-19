@@ -243,6 +243,9 @@ The current trimming steps are:
 * `UMISPLIT`: Extract a cell barcode and UMI (two separate lengths) from the 5' end and append both to the read name.
 * `UMIDROPLETCORRECT`: Whitelist-correct a cell barcode against a known-good list, then append the corrected barcode and raw UMI to the read name.
 * `UMIRHAPSODYCORRECT`: Whitelist-correct BD Rhapsody's three combinatorial cell label segments, then append the combined barcode and raw UMI to the read name.
+* `UMILONGREADEXTRACT`: Extract a UMI from a long-read amplicon cassette (Oxford Nanopore custom-PCR-UMI / PacBio CCS shared design), with anchor search and indel-tolerant offset cascade.
+* `UMIDIMERCORRECT`: Whitelist-correct a dimer-block cell barcode (scBUC-seq/scCOLOR-seq design), then append the corrected barcode and raw UMI to the read name.
+* `UMIINDEXMERGE`: Merge a UMI carried in a separate index-read FASTQ (Illumina xGen UDI-UMI adapters) into the read name.
 * `MAXAMBIG`: Drop the read if the fraction of N bases exceeds a maximum.
 * `LONGREADTRIM`: Unified long-read adapter trimmer. Clips terminal adapter residuals (5′ and 3′) and splits chimeric reads at internal adapter junctions in a single step, using edit distance (indel-aware) and k-mer seeding. **Single-end mode only.**
 * `TOPHRED33`: Convert quality scores to Phred-33.
@@ -309,7 +312,22 @@ Most steps take one or more settings, delimited by `:`.
     * Recommended values: `1.5` to aggressively drop di-nucleotide repeats (e.g. ATAT…); `1.0` to retain them while still dropping homopolymers; `0.5` for a very lenient filter.
     * Example: `LOWCOMPLEXITY:1.0`
 
-**Name-tagging steps and mate synchronisation:** `UMIEXTRACT`, `UMISPLIT`, `UMIDROPLETCORRECT`, and `UMIRHAPSODYCORRECT` (below) all work by appending a tag to a read's name. When run via `-pe1steps`/`-pe2steps`, whichever tag ends up on the mate you tagged is automatically **mirrored onto the other mate's name too** (both keep their own original name, but gain the identical tag suffix). This matters because the tagged mate is usually the purely-technical one discarded before alignment (e.g. 10x R1) - only the biological mate (R2) survives into a BAM, so a tag living only on the discarded mate's name would be invisible to anything downstream reading it back out of the aligned BAM's QNAME during deduplication or counting.
+### Which UMI step do I use?
+
+| Platform / protocol | Step |
+|---|---|
+| Generic in-line UMI (Qiagen, NuGEN, Kapa, Duplex-Seq style: plain N-block at 5' of R1/R2) | `UMIEXTRACT` / `UMISPLIT` |
+| 10x Genomics, Drop-seq and similar droplet single-cell (barcode+UMI, whitelist correction) | `UMIDROPLETCORRECT` |
+| BD Rhapsody (combinatorial CLS1/CLS2/CLS3 cell label + UMI) | `UMIRHAPSODYCORRECT` |
+| ONT custom-PCR-UMI amplicons (SQK-LSK109) or PacBio CCS amplicon-UMI (Karst et al. design) | `UMILONGREADEXTRACT` |
+| Direct single-cell Nanopore transcriptomics, dimer-block barcode design (scBUC-seq/scCOLOR-seq) | `UMIDIMERCORRECT` |
+| Illumina UMI-adapter kits where the UMI is its own index read, not embedded in R1/R2 (e.g. IDT xGen UDI-UMI) | `UMIINDEXMERGE` |
+
+Every UMI-related step name starts with `UMI` for easy discovery (`--help` output, grepping this README).
+
+**Name-tagging steps and mate synchronisation:** `UMIEXTRACT`, `UMISPLIT`, `UMIDROPLETCORRECT`, `UMIRHAPSODYCORRECT`, and `UMIDIMERCORRECT` (below) all work by appending a tag derived from each mate's *own* leading bases to that read's name, so running them symmetrically on both mates would desynchronise the tags - all five refuse to run in symmetric paired-end mode and must be routed to a single mate via `-pe1steps`/`-pe2steps` or `-technicalread`. When run that way, whichever tag ends up on the mate you tagged is automatically **mirrored onto the other mate's name too** (both keep their own original name, but gain the identical tag suffix). This matters because the tagged mate is usually the purely-technical one discarded before alignment (e.g. 10x R1) - only the biological mate (R2) survives into a BAM, so a tag living only on the discarded mate's name would be invisible to anything downstream reading it back out of the aligned BAM's QNAME during deduplication or counting.
+
+`UMIINDEXMERGE` is the one exception: it looks up the UMI by read ID from an external index-read file, so both mates of a pair independently derive the *same* tag from the *same* lookup - it is safe to run in symmetric paired-end mode with no special routing needed. `UMILONGREADEXTRACT` is single-end oriented (long-read platforms), so the distinction doesn't apply to it in practice.
 
 * `UMIEXTRACT:<length>[:<separator>]`
     * `length`: the number of bases to extract from the 5' end as the UMI.
@@ -344,6 +362,35 @@ Most steps take one or more settings, delimited by `:`.
     * `maxMismatch`: `0` or `1`, applied independently to each of the three CLS segments.
     * A read is dropped if shorter than the selected version's full construct, or if any of the three CLS segments has no confident whitelist match within `maxMismatch` at its derived position.
     * Examples: `UMIRHAPSODYCORRECT:whitelists/rhapsody_v1:1` (defaults to `V1`); `UMIRHAPSODYCORRECT:ENHANCEDV2:whitelists/rhapsody_enhancedv2:1`.
+
+* `UMILONGREADEXTRACT:<anchor>:<umiPattern>:<maxMismatch>:<maxIndelShift>[:<separator>]`
+    * Generic extractor for the long-read amplicon UMI cassette shared by Oxford Nanopore's own "Custom PCR UMI" protocol (SQK-LSK109) and the equivalent PacBio CCS amplicon-UMI design (Karst et al. 2021, [doi:10.1038/s41592-020-01041-y](https://doi.org/10.1038/s41592-020-01041-y)) - both platforms sequence the same synthetic cassette, just with different basecallers and error profiles, so one step covers both rather than one class per platform.
+    * `anchor`: the fixed sequence (A/C/G/T only) immediately preceding the UMI - the fixed portion of the tagging primer. Pass the literal token `NONE` to skip anchor search and assume the UMI starts at position 0, which is required for kits (e.g. PCS114/PCB114) whose strand-switching-incorporated UMI cassette sequence Oxford Nanopore does not publicly disclose.
+    * `umiPattern`: an IUPAC degeneracy pattern, one character per UMI base, in the same notation ONT/Karst et al. use for their own designs (e.g. `TTVVVVTTVVVVTTVVVVTTVVVVTTT`, `V`=A/C/G, avoiding T-homopolymer runs). Supported symbols: `A`/`C`/`G`/`T` (literal), `N` (any base), and the IUPAC ambiguity codes `R`/`Y`/`S`/`W`/`K`/`M`/`B`/`D`/`H`/`V`. Pattern length fixes the UMI block length.
+    * `maxMismatch`: Hamming mismatch budget, applied both when locating the anchor and when validating the UMI block against `umiPattern` (a base outside a position's allowed set counts as a mismatch).
+    * `maxIndelShift` (0-5): nanopore reads are indel-dominated, not substitution-dominated like Illumina - a fixed-offset anchor search misfires whenever a small indel occurs upstream of it. The anchor is searched at offset 0 first, then ±1, ±2, ... up to ±`maxIndelShift` (closest-to-nominal first, same offset-cascade technique as `UMIRHAPSODYCORRECT`), absorbing any single indel before the anchor without needing full banded alignment.
+    * `separator`: (optional) as in `UMIEXTRACT` [default = `_`]. The UMI is appended as `<separator>UMI:<bases>`, matching `UMIEXTRACT`'s own tagging convention (there is no whitelist to correct a random UMI against).
+    * **Not a hardcoded per-kit profile** (unlike `UMIRHAPSODYCORRECT`'s `V1`/`ENHANCEDV2`): the ONT/PacBio UMI cassette is not one fixed layout across labs and kits, so anchor, block length and degeneracy are all parameters, not a named variant list.
+    * **Single 5' end only** in this version: the real cassette can place a UMI at both ends via distinct fwd/rev primers, which needs strand-orientation detection this step does not perform. Run a second instance against a reverse-complemented copy of the data if a 3' UMI is also present.
+    * A read whose anchor cannot be located within budget, or whose UMI block fails pattern validation within budget, is dropped.
+    * Examples: `UMILONGREADEXTRACT:GTATCGTGTAGAGACTGCGTAGGT:TTVVVVTTVVVVTTVVVVTTVVVVTTT:2:2` (ONT/Karst-style cassette with known anchor); `UMILONGREADEXTRACT:NONE:NNNNNNNNNNNNNNNNNN:1:0` (undisclosed PCS114/PCB114 cassette, no anchor available).
+
+* `UMIDIMERCORRECT:<whitelistFile>:<cbLength>:<umiLength>:<maxMismatchDimers>[:<separator>]`
+    * Whitelist-corrects a cell barcode built from dimer blocks - the scBUC-seq/scCOLOR-seq design (Philpott et al., *Nat Biotechnol* 2021, [doi:10.1038/s41587-021-00965-w](https://doi.org/10.1038/s41587-021-00965-w)) used to make barcode assignment robust to Nanopore's raw error rate for direct single-cell Nanopore transcriptome sequencing. Each barcode position is a 2-base dimer symbol from a restricted set, not a single random base, so a sequencing error typically corrupts at most one whole dimer rather than shifting the read frame.
+    * `whitelistFile`: as in `UMIDROPLETCORRECT` (path may contain colons, parsed from the right).
+    * `cbLength`, `umiLength`: in bases, as in `UMISPLIT`; `cbLength` must be even (every position is a 2-base dimer).
+    * `maxMismatchDimers`: `0` (exact match only) or `1` (also accept a candidate with exactly one dimer replaced by any of the 16 possible 2-base alternatives - correcting a barcode whose error is confined to one dimer, whether it absorbed one or two base-level substitutions). Values above `1` are rejected, same reasoning as `UMIDROPLETCORRECT`'s cap.
+    * The UMI is never corrected here, same rationale as `UMIDROPLETCORRECT`.
+    * Same length/payload behaviour as `UMISPLIT`/`UMIDROPLETCORRECT`: a read exactly `cbLength + umiLength` bases survives with a zero-length sequence.
+    * Example: `UMIDIMERCORRECT:sccolor_whitelist.txt:24:14:1` (12-dimer/24bp cell barcode, 14bp raw UMI).
+
+* `UMIINDEXMERGE:<indexFastqFile>[:<separator>]`
+    * Merges a UMI carried in a separate index-read (I2) FASTQ into the read name, for Illumina UMI-adapter designs where the UMI physically replaces the i7 index and is sequenced as its own index read rather than being embedded in R1/R2 (e.g. [IDT xGen UDI-UMI adapters](https://www.idtdna.com/pages/products/next-generation-sequencing/workflow/xgen-ngs-library-preparation/ngs-adapters-indexing-primers/adapters-indexing-primers-for-illumina)).
+    * `indexFastqFile`: path to the index-read FASTQ (plain text or `.gz`/`.bz2`/`.zip`), read entirely into memory at construction into a read-ID → UMI-sequence map - simpler and safer than threading a second synchronised stream through Trimmomatic's multithreaded block pipeline, where "read the next line" per record would race across threads. The join key is the read name up to (not including) the first whitespace, matching how Illumina read IDs are shared verbatim across R1/R2/I2 for the same template.
+    * `separator`: (optional) as in `UMIEXTRACT` [default = `_`]. The UMI is appended as `<separator>UMI:<bases>`.
+    * A read whose ID has no entry in the index map is dropped (index read missing, or files out of sync).
+    * **Safe in symmetric paired-end mode**, unlike every other UMI step above: R1 and R2 of the same template share the same read ID and therefore look up the identical UMI, so tagging both mates independently can never desynchronise them.
+    * Example: `UMIINDEXMERGE:sample_I2.fastq.gz`
 
 * `MAXAMBIG:<maxFraction>`
     * `maxFraction`: the maximum allowed fraction of N bases in the read (0.0–1.0). Reads exceeding this fraction are dropped.

@@ -3,7 +3,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>org.usadellab</groupId>
   <artifactId>trimmomatic</artifactId>
-  <version>0.42</version>
+  <version>0.43</version>
   <build>
     <resources>
       <resource>
