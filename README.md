@@ -364,17 +364,13 @@ Most steps take one or more settings, delimited by `:`.
     * Example: `LONGREADTRIM:adapters/PacBio-Sequel.fa:0.05:10:100:HIFI` - PacBio HiFi / CCS reads (no chimera splitting).
     * Example: `LONGREADTRIM:adapters/PacBio-RSII.fa:0.15:10:100:CLR` - PacBio CLR reads (chimera splitting enabled).
     * Trimmomatic ships adapter files for the most common long-read platforms in the `adapters/` directory:
-
-| File | Platform / Chemistry | Recommended `maxErrorRate` | Recommended `platform` |
-|------|----------------------|---------------------------|------------------------|
-| `adapters/ONT-LSK108-LSK110.fa` | Oxford Nanopore SQK-LSK108, LSK109, LSK110 (R9.4 / R9.4.1) | `0.15` | `ONT` |
-| `adapters/ONT-LSK112.fa` | Oxford Nanopore SQK-LSK112 (R10.3) | `0.10` | `ONT` |
-| `adapters/ONT-LSK114.fa` | Oxford Nanopore SQK-LSK114, LSK114-24 (R10.4.1 / Kit 14) | `0.10` | `ONT` |
-| `adapters/ONT-Rapid.fa` | Oxford Nanopore RAD004, RAD114, RBK004, RBK114 (Rapid kits) | `0.15` (R9); `0.10` (R10) | `ONT` |
-| `adapters/ONT-cDNA.fa` | Oxford Nanopore SQK-PCS109, PCS114 (direct cDNA / PCR-cDNA) | `0.15` (R9); `0.10` (R10) | `ONT` |
-| `adapters/PacBio-RSII.fa` | PacBio RS II - SMRTbell adapter + C2 sequencing primer | `0.15` | `CLR` |
-| `adapters/PacBio-Sequel.fa` | PacBio Sequel, SequelII, SequelIIe, Revio, ETK2.0 - SMRTbell adapter + C2 primer | `0.05` (HiFi/CCS); `0.15` (CLR) | `HIFI` or `CLR` |
-
+        * `adapters/ONT-LSK108-LSK110.fa` - Oxford Nanopore SQK-LSK108, LSK109, LSK110 (R9.4 / R9.4.1). `maxErrorRate` `0.15`, `platform` `ONT`.
+        * `adapters/ONT-LSK112.fa` - Oxford Nanopore SQK-LSK112 (R10.3). `maxErrorRate` `0.10`, `platform` `ONT`.
+        * `adapters/ONT-LSK114.fa` - Oxford Nanopore SQK-LSK114, LSK114-24 (R10.4.1 / Kit 14). `maxErrorRate` `0.10`, `platform` `ONT`.
+        * `adapters/ONT-Rapid.fa` - Oxford Nanopore RAD004, RAD114, RBK004, RBK114 (Rapid kits). `maxErrorRate` `0.15` (R9) / `0.10` (R10), `platform` `ONT`.
+        * `adapters/ONT-cDNA.fa` - Oxford Nanopore SQK-PCS109, PCS114 (direct cDNA / PCR-cDNA). `maxErrorRate` `0.15` (R9) / `0.10` (R10), `platform` `ONT`.
+        * `adapters/PacBio-RSII.fa` - PacBio RS II, SMRTbell adapter + C2 sequencing primer. `maxErrorRate` `0.15`, `platform` `CLR`.
+        * `adapters/PacBio-Sequel.fa` - PacBio Sequel, SequelII, SequelIIe, Revio, ETK2.0, SMRTbell adapter + C2 primer. `maxErrorRate` `0.05` (HiFi/CCS) / `0.15` (CLR), `platform` `HIFI` or `CLR`.
     * **Note:** Adapter chemistry evolves with each new kit generation. For kits not listed above, consult your platform's official documentation or community-curated sources such as [Porechop](https://github.com/rrwick/Porechop/blob/master/porechop/adapters.py) (ONT) and the [PacBio SMRTbell adapter documentation](https://www.pacb.com/documentation/).
 
 * `TOPHRED33`
