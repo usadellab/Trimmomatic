@@ -80,11 +80,11 @@ public class TrimmerFactory {
 		if (trimmerName.equals("UMISPLIT"))
 			return new UmiSplitTrimmer(args);
 
-		if (trimmerName.equals("BARCODECORRECT"))
-			return new BarcodeCorrectTrimmer(args);
+		if (trimmerName.equals("UMIDROPLETCORRECT"))
+			return new UmiDropletCorrectTrimmer(args);
 
-		if (trimmerName.equals("BDRHAPSODYCORRECT"))
-			return new BdRhapsodyCorrectTrimmer(args);
+		if (trimmerName.equals("UMIRHAPSODYCORRECT"))
+			return new UmiRhapsodyCorrectTrimmer(args);
 
 		if (trimmerName.equals("LONGREADTRIM"))
 			return new LongReadTrimmer(args);

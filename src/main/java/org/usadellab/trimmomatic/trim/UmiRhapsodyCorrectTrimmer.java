@@ -11,12 +11,12 @@ import java.util.Set;
 import org.usadellab.trimmomatic.fastq.FastqRecord;
 
 /**
- * BDRHAPSODYCORRECT:[<beadVersion>:]<whitelistDir>:<maxMismatch>[:<separator>]
+ * UMIRHAPSODYCORRECT:[<beadVersion>:]<whitelistDir>:<maxMismatch>[:<separator>]
  *
  * Whitelist-corrects the three cell label segments (CLS1/CLS2/CLS3) of a BD
  * Rhapsody R1 read and extracts the combined cell barcode plus the raw UMI to
  * the read name, matching the same bare-sequence convention as
- * UMISPLIT/BARCODECORRECT. One trimmer covers every supported bead version --
+ * UMISPLIT/UMIDROPLETCORRECT. One trimmer covers every supported bead version --
  * <beadVersion> selects the segment lengths, linker lengths and prefix-inset
  * handling internally, the same way LONGREADTRIM's platform hint (ONT/CLR/HIFI)
  * selects behaviour within one class rather than one class per platform.
@@ -102,10 +102,10 @@ import org.usadellab.trimmomatic.fastq.FastqRecord;
  *   @original_name<separator><CLS1+CLS2+CLS3><separator><raw UMI>
  *
  * Examples:
- *   BDRHAPSODYCORRECT:benchmark/barcode_whitelists/rhapsody_v1:1
- *   BDRHAPSODYCORRECT:ENHANCEDV2:benchmark/barcode_whitelists/rhapsody_enhancedv2:1
+ *   UMIRHAPSODYCORRECT:benchmark/barcode_whitelists/rhapsody_v1:1
+ *   UMIRHAPSODYCORRECT:ENHANCEDV2:benchmark/barcode_whitelists/rhapsody_enhancedv2:1
  */
-public class BdRhapsodyCorrectTrimmer extends AbstractSingleRecordTrimmer {
+public class UmiRhapsodyCorrectTrimmer extends AbstractSingleRecordTrimmer {
     private static final int MAX_SUPPORTED_MISMATCH = 1;
     private static final char[] BASES = { 'A', 'C', 'G', 'T' };
 
@@ -143,11 +143,11 @@ public class BdRhapsodyCorrectTrimmer extends AbstractSingleRecordTrimmer {
     private final Set<String> cls2Whitelist;
     private final Set<String> cls3Whitelist;
 
-    public BdRhapsodyCorrectTrimmer(String args) throws IOException {
+    public UmiRhapsodyCorrectTrimmer(String args) throws IOException {
         String[] tokens = args.split(":");
         if (tokens.length < 1)
             throw new IllegalArgumentException(
-                    "BDRHAPSODYCORRECT requires <whitelistDir>:<maxMismatch>, got: " + args);
+                    "UMIRHAPSODYCORRECT requires <whitelistDir>:<maxMismatch>, got: " + args);
 
         // beadVersion is a leading token, not trailing like LONGREADTRIM's
         // platform hint: <separator> is already an optional trailing
@@ -171,14 +171,14 @@ public class BdRhapsodyCorrectTrimmer extends AbstractSingleRecordTrimmer {
 
         if (remaining.length < 2)
             throw new IllegalArgumentException(
-                    "BDRHAPSODYCORRECT requires <whitelistDir>:<maxMismatch>, got: " + args);
+                    "UMIRHAPSODYCORRECT requires <whitelistDir>:<maxMismatch>, got: " + args);
 
         boolean hasSeparator = !isInteger(remaining[remaining.length - 1]);
         int trailingCount = hasSeparator ? 2 : 1;
         int pathTokenCount = remaining.length - trailingCount;
         if (pathTokenCount < 1)
             throw new IllegalArgumentException(
-                    "BDRHAPSODYCORRECT requires <whitelistDir>:<maxMismatch>, got: " + args);
+                    "UMIRHAPSODYCORRECT requires <whitelistDir>:<maxMismatch>, got: " + args);
 
         String whitelistDir = String.join(":", Arrays.copyOfRange(remaining, 0, pathTokenCount));
         maxMismatch = Integer.parseInt(remaining[pathTokenCount]);
@@ -186,7 +186,7 @@ public class BdRhapsodyCorrectTrimmer extends AbstractSingleRecordTrimmer {
 
         if (maxMismatch < 0 || maxMismatch > MAX_SUPPORTED_MISMATCH)
             throw new IllegalArgumentException(
-                    "BDRHAPSODYCORRECT maxMismatch must be between 0 and " + MAX_SUPPORTED_MISMATCH
+                    "UMIRHAPSODYCORRECT maxMismatch must be between 0 and " + MAX_SUPPORTED_MISMATCH
                     + " (got " + maxMismatch + "); larger neighbourhoods aren't worth it for a plain Hamming correction");
 
         cls1Len = profile.cls1Len;
@@ -228,20 +228,20 @@ public class BdRhapsodyCorrectTrimmer extends AbstractSingleRecordTrimmer {
         }
 
         if (set.isEmpty())
-            throw new IllegalArgumentException("BDRHAPSODYCORRECT whitelist file is empty or unreadable: " + f);
+            throw new IllegalArgumentException("UMIRHAPSODYCORRECT whitelist file is empty or unreadable: " + f);
 
         return set;
     }
 
     /**
-     * Same symmetric-mode hazard as BARCODECORRECT -- see its processRecords()
+     * Same symmetric-mode hazard as UMIDROPLETCORRECT -- see its processRecords()
      * for the full explanation. Refuse rather than desync mate names.
      */
     @Override
     public FastqRecord[] processRecords(FastqRecord[] in) {
         if (in != null && in.length > 1)
             throw new IllegalStateException(
-                    "BDRHAPSODYCORRECT cannot run in symmetric paired-end mode: it would rename each mate "
+                    "UMIRHAPSODYCORRECT cannot run in symmetric paired-end mode: it would rename each mate "
                     + "independently from its own leading bases, desynchronising mate names. "
                     + "Route it to one mate only, e.g. via -pe1steps/-pe2steps or -technicalread.");
         return super.processRecords(in);

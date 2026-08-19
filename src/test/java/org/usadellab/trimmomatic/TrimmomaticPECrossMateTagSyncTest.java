@@ -31,7 +31,7 @@ import org.usadellab.trimmomatic.util.Logger;
  * BlockOfWork's per-mate branch now mirrors any appended name tag onto the
  * OTHER mate automatically -- detected generically (any name-tagging step
  * only ever appends, never replaces), so this works for UMIEXTRACT, UMISPLIT
- * and BARCODECORRECT without any of those classes needing to know about the
+ * and UMIDROPLETCORRECT without any of those classes needing to know about the
  * other mate at all.
  */
 public class TrimmomaticPECrossMateTagSyncTest {
@@ -98,7 +98,7 @@ public class TrimmomaticPECrossMateTagSyncTest {
 
     @Test
     public void testUmiExtractOnMate1_tagMirroredOntoMate2() throws Exception {
-        // Generalisation check: this mechanism isn't UMISPLIT/BARCODECORRECT-specific --
+        // Generalisation check: this mechanism isn't UMISPLIT/UMIDROPLETCORRECT-specific --
         // any name-appending step gets mirrored, including the pre-existing UMIEXTRACT.
         File r1in = writeFastq("r1.fastq", fqRecord("p1/1", "ACGTACGT" + "TTTT")); // 8bp UMI + payload
         File r2in = writeFastq("r2.fastq", fqRecord("p1/2", "GGGGGGGGGGGGGGGG"));

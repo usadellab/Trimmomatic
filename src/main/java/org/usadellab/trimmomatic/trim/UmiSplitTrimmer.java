@@ -19,7 +19,7 @@ import org.usadellab.trimmomatic.fastq.FastqRecord;
  * separator string, so reusing that shape for a second length would be
  * ambiguous to both the parser and to a human reading a script.
  *
- * Does not whitelist-correct the barcode -- see BARCODECORRECT for that.
+ * Does not whitelist-correct the barcode -- see UMIDROPLETCORRECT for that.
  *
  * The read is renamed as: @original_name<separator><CB bases><separator><UMI bases>
  * -- bare sequences, no "CB:"/"UMI:" labels, matching umi_tools extract's own

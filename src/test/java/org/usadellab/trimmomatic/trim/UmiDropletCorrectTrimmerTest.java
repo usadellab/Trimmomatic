@@ -15,7 +15,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.usadellab.trimmomatic.fastq.FastqRecord;
 
-public class BarcodeCorrectTrimmerTest {
+public class UmiDropletCorrectTrimmerTest {
 
     @TempDir
     Path tempDir;
@@ -47,7 +47,7 @@ public class BarcodeCorrectTrimmerTest {
     @Test
     public void testExactMatch_survivesWithSameBarcode() throws Exception {
         File wl = writeWhitelist("wl.txt", "AAAACCCCGGGGTTTT", "ACGTACGTACGTACGT");
-        BarcodeCorrectTrimmer trimmer = new BarcodeCorrectTrimmer(wl.getPath() + ":16:8:1");
+        UmiDropletCorrectTrimmer trimmer = new UmiDropletCorrectTrimmer(wl.getPath() + ":16:8:1");
 
         FastqRecord rec = makeRecord("r1", "AAAACCCCGGGGTTTT" + "UMIUMIUM" + "PAYLOAD1");
         FastqRecord result = trimmer.processRecord(rec);
@@ -63,7 +63,7 @@ public class BarcodeCorrectTrimmerTest {
     @Test
     public void testOneMismatch_correctsToWhitelistEntry() throws Exception {
         File wl = writeWhitelist("wl.txt", "AAAACCCCGGGGTTTT");
-        BarcodeCorrectTrimmer trimmer = new BarcodeCorrectTrimmer(wl.getPath() + ":16:8:1");
+        UmiDropletCorrectTrimmer trimmer = new UmiDropletCorrectTrimmer(wl.getPath() + ":16:8:1");
 
         // Position 0: A -> T (1 mismatch from the whitelist entry)
         String rawCb = "TAAACCCCGGGGTTTT";
@@ -78,7 +78,7 @@ public class BarcodeCorrectTrimmerTest {
     @Test
     public void testNInBarcode_correctable() throws Exception {
         File wl = writeWhitelist("wl.txt", "AAAACCCCGGGGTTTT");
-        BarcodeCorrectTrimmer trimmer = new BarcodeCorrectTrimmer(wl.getPath() + ":16:8:1");
+        UmiDropletCorrectTrimmer trimmer = new UmiDropletCorrectTrimmer(wl.getPath() + ":16:8:1");
 
         String rawCb = "NAAACCCCGGGGTTTT"; // N at position 0
         FastqRecord rec = makeRecord("r1", rawCb + "UMIUMIUM" + "PAYLOAD1");
@@ -94,7 +94,7 @@ public class BarcodeCorrectTrimmerTest {
     @Test
     public void testTwoMismatches_beyondTolerance_drops() throws Exception {
         File wl = writeWhitelist("wl.txt", "AAAACCCCGGGGTTTT");
-        BarcodeCorrectTrimmer trimmer = new BarcodeCorrectTrimmer(wl.getPath() + ":16:8:1");
+        UmiDropletCorrectTrimmer trimmer = new UmiDropletCorrectTrimmer(wl.getPath() + ":16:8:1");
 
         // Positions 0 and 1 both wrong -- 2 mismatches, beyond maxMismatch=1
         String rawCb = "TTAACCCCGGGGTTTT";
@@ -105,7 +105,7 @@ public class BarcodeCorrectTrimmerTest {
     @Test
     public void testMaxMismatchZero_onlyExactMatchWorks() throws Exception {
         File wl = writeWhitelist("wl.txt", "AAAACCCCGGGGTTTT");
-        BarcodeCorrectTrimmer trimmer = new BarcodeCorrectTrimmer(wl.getPath() + ":16:8:0");
+        UmiDropletCorrectTrimmer trimmer = new UmiDropletCorrectTrimmer(wl.getPath() + ":16:8:0");
 
         String oneOff = "TAAACCCCGGGGTTTT"; // 1 mismatch -- should NOT correct at maxMismatch=0
         FastqRecord rec = makeRecord("r1", oneOff + "UMIUMIUM" + "PAYLOAD1");
@@ -122,7 +122,7 @@ public class BarcodeCorrectTrimmerTest {
     @Test
     public void testExactLengthRead_zeroLengthPayloadSurvives() throws Exception {
         File wl = writeWhitelist("wl.txt", "AAAACCCCGGGGTTTT");
-        BarcodeCorrectTrimmer trimmer = new BarcodeCorrectTrimmer(wl.getPath() + ":16:8:1");
+        UmiDropletCorrectTrimmer trimmer = new UmiDropletCorrectTrimmer(wl.getPath() + ":16:8:1");
 
         FastqRecord rec = makeRecord("r1", "AAAACCCCGGGGTTTT" + "UMIUMIUM"); // no payload
         FastqRecord result = trimmer.processRecord(rec);
@@ -135,7 +135,7 @@ public class BarcodeCorrectTrimmerTest {
     @Test
     public void testShorterThanConstruct_drops() throws Exception {
         File wl = writeWhitelist("wl.txt", "AAAACCCCGGGGTTTT");
-        BarcodeCorrectTrimmer trimmer = new BarcodeCorrectTrimmer(wl.getPath() + ":16:8:1");
+        UmiDropletCorrectTrimmer trimmer = new UmiDropletCorrectTrimmer(wl.getPath() + ":16:8:1");
 
         FastqRecord rec = makeRecord("r1", "AAAACCCCGGGGTTT"); // 15bp, one short of 16+8
         assertNull(trimmer.processRecord(rec));
@@ -147,7 +147,7 @@ public class BarcodeCorrectTrimmerTest {
     @Test
     public void testGzippedWhitelist_loadsCorrectly() throws Exception {
         File wl = writeGzippedWhitelist("wl.txt.gz", "AAAACCCCGGGGTTTT");
-        BarcodeCorrectTrimmer trimmer = new BarcodeCorrectTrimmer(wl.getPath() + ":16:8:1");
+        UmiDropletCorrectTrimmer trimmer = new UmiDropletCorrectTrimmer(wl.getPath() + ":16:8:1");
 
         FastqRecord rec = makeRecord("r1", "AAAACCCCGGGGTTTT" + "UMIUMIUM" + "PAYLOAD1");
         assertNotNull(trimmer.processRecord(rec));
@@ -157,7 +157,7 @@ public class BarcodeCorrectTrimmerTest {
     public void testEmptyWhitelist_throws() throws Exception {
         File wl = writeWhitelist("empty.txt");
         assertThrows(IllegalArgumentException.class,
-                () -> new BarcodeCorrectTrimmer(wl.getPath() + ":16:8:1"));
+                () -> new UmiDropletCorrectTrimmer(wl.getPath() + ":16:8:1"));
     }
 
     // ------------------------------------------------------------------
@@ -167,14 +167,14 @@ public class BarcodeCorrectTrimmerTest {
     public void testMismatchAboveSupportedCap_throws() throws Exception {
         File wl = writeWhitelist("wl.txt", "AAAACCCCGGGGTTTT");
         assertThrows(IllegalArgumentException.class,
-                () -> new BarcodeCorrectTrimmer(wl.getPath() + ":16:8:2"));
+                () -> new UmiDropletCorrectTrimmer(wl.getPath() + ":16:8:2"));
     }
 
     @Test
     public void testMissingRequiredArgs_throws() throws Exception {
         File wl = writeWhitelist("wl.txt", "AAAACCCCGGGGTTTT");
         assertThrows(IllegalArgumentException.class,
-                () -> new BarcodeCorrectTrimmer(wl.getPath() + ":16"));
+                () -> new UmiDropletCorrectTrimmer(wl.getPath() + ":16"));
     }
 
     // ------------------------------------------------------------------
@@ -183,7 +183,7 @@ public class BarcodeCorrectTrimmerTest {
     @Test
     public void testProcessRecords_twoElementArray_throws() throws Exception {
         File wl = writeWhitelist("wl.txt", "AAAACCCCGGGGTTTT");
-        BarcodeCorrectTrimmer trimmer = new BarcodeCorrectTrimmer(wl.getPath() + ":16:8:1");
+        UmiDropletCorrectTrimmer trimmer = new UmiDropletCorrectTrimmer(wl.getPath() + ":16:8:1");
 
         FastqRecord a = makeRecord("a", "AAAACCCCGGGGTTTT" + "UMIUMIUM" + "X");
         FastqRecord b = makeRecord("b", "AAAACCCCGGGGTTTT" + "UMIUMIUM" + "X");
@@ -193,7 +193,7 @@ public class BarcodeCorrectTrimmerTest {
     @Test
     public void testProcessRecords_singleElementArray_works() throws Exception {
         File wl = writeWhitelist("wl.txt", "AAAACCCCGGGGTTTT");
-        BarcodeCorrectTrimmer trimmer = new BarcodeCorrectTrimmer(wl.getPath() + ":16:8:1");
+        UmiDropletCorrectTrimmer trimmer = new UmiDropletCorrectTrimmer(wl.getPath() + ":16:8:1");
 
         FastqRecord[] in = { makeRecord("r1", "AAAACCCCGGGGTTTT" + "UMIUMIUM" + "PAYLOAD1") };
         FastqRecord[] result = trimmer.processRecords(in);

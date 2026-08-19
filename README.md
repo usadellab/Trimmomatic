@@ -205,7 +205,7 @@ java -classpath <path to trimmomatic jar> org.usadellab.trimmomatic.TrimmomaticS
     R1_paired.fastq.gz /dev/null R2_paired.fastq.gz R2_unpaired.fastq.gz \
     ILLUMINACLIP:adapters/TruSeq3-PE.fa:2:30:10 SLIDINGWINDOW:4:20 MINLEN:30
   ```
-* `-pe1steps <steps>` / `-pe2steps <steps>` *(PE only, must be given together)*: run an **independent** step list on each mate instead of one shared/symmetric list. Either mate's steps dropping the read drops the **whole pair** - neither mate ever appears in the unpaired output. Generalises `-technicalread` (which only lets the biological side drop the pair) to single-cell layouts where the barcode/UMI mate itself needs a step that can fail a read, e.g. `BARCODECORRECT`. Give an empty string (`""`) for a mate that should pass through untouched. Mutually exclusive with `-technicalread`, and with giving steps as the trailing step list (steps must live in one place or the other, not both). Example:
+* `-pe1steps <steps>` / `-pe2steps <steps>` *(PE only, must be given together)*: run an **independent** step list on each mate instead of one shared/symmetric list. Either mate's steps dropping the read drops the **whole pair** - neither mate ever appears in the unpaired output. Generalises `-technicalread` (which only lets the biological side drop the pair) to single-cell layouts where the barcode/UMI mate itself needs a step that can fail a read, e.g. `UMIDROPLETCORRECT`. Give an empty string (`""`) for a mate that should pass through untouched. Mutually exclusive with `-technicalread`, and with giving steps as the trailing step list (steps must live in one place or the other, not both). Example:
   ```
   TrimmomaticPE -pe1steps "UMIEXTRACT:28" \
     -pe2steps "ILLUMINACLIP:adapters/TruSeq3-PE.fa:2:30:10 SLIDINGWINDOW:4:20 MINLEN:20" \
@@ -241,8 +241,8 @@ The current trimming steps are:
 * `LOWCOMPLEXITY`: Drop the read if its Shannon entropy (over A/C/G/T frequencies, N excluded) is below a minimum.
 * `UMIEXTRACT`: Extract a UMI from the 5' end and append it to the read name.
 * `UMISPLIT`: Extract a cell barcode and UMI (two separate lengths) from the 5' end and append both to the read name.
-* `BARCODECORRECT`: Whitelist-correct a cell barcode against a known-good list, then append the corrected barcode and raw UMI to the read name.
-* `BDRHAPSODYCORRECT`: Whitelist-correct BD Rhapsody's three combinatorial cell label segments, then append the combined barcode and raw UMI to the read name.
+* `UMIDROPLETCORRECT`: Whitelist-correct a cell barcode against a known-good list, then append the corrected barcode and raw UMI to the read name.
+* `UMIRHAPSODYCORRECT`: Whitelist-correct BD Rhapsody's three combinatorial cell label segments, then append the combined barcode and raw UMI to the read name.
 * `MAXAMBIG`: Drop the read if the fraction of N bases exceeds a maximum.
 * `LONGREADTRIM`: Unified long-read adapter trimmer. Clips terminal adapter residuals (5′ and 3′) and splits chimeric reads at internal adapter junctions in a single step, using edit distance (indel-aware) and k-mer seeding. **Single-end mode only.**
 * `TOPHRED33`: Convert quality scores to Phred-33.
@@ -309,7 +309,7 @@ Most steps take one or more settings, delimited by `:`.
     * Recommended values: `1.5` to aggressively drop di-nucleotide repeats (e.g. ATAT…); `1.0` to retain them while still dropping homopolymers; `0.5` for a very lenient filter.
     * Example: `LOWCOMPLEXITY:1.0`
 
-**Name-tagging steps and mate synchronisation:** `UMIEXTRACT`, `UMISPLIT`, `BARCODECORRECT`, and `BDRHAPSODYCORRECT` (below) all work by appending a tag to a read's name. When run via `-pe1steps`/`-pe2steps`, whichever tag ends up on the mate you tagged is automatically **mirrored onto the other mate's name too** (both keep their own original name, but gain the identical tag suffix). This matters because the tagged mate is usually the purely-technical one discarded before alignment (e.g. 10x R1) - only the biological mate (R2) survives into a BAM, so a tag living only on the discarded mate's name would be invisible to anything downstream reading it back out of the aligned BAM's QNAME during deduplication or counting.
+**Name-tagging steps and mate synchronisation:** `UMIEXTRACT`, `UMISPLIT`, `UMIDROPLETCORRECT`, and `UMIRHAPSODYCORRECT` (below) all work by appending a tag to a read's name. When run via `-pe1steps`/`-pe2steps`, whichever tag ends up on the mate you tagged is automatically **mirrored onto the other mate's name too** (both keep their own original name, but gain the identical tag suffix). This matters because the tagged mate is usually the purely-technical one discarded before alignment (e.g. 10x R1) - only the biological mate (R2) survives into a BAM, so a tag living only on the discarded mate's name would be invisible to anything downstream reading it back out of the aligned BAM's QNAME during deduplication or counting.
 
 * `UMIEXTRACT:<length>[:<separator>]`
     * `length`: the number of bases to extract from the 5' end as the UMI.
@@ -322,28 +322,28 @@ Most steps take one or more settings, delimited by `:`.
     * `cbLength`: the number of bases to extract from the 5' end as the cell barcode.
     * `umiLength`: the number of bases to extract immediately after the cell barcode as the UMI.
     * `separator`: (optional) the string used to separate the read name and each tag [default = `_`].
-    * Both are appended to the read name as bare sequences, `<separator><CB bases><separator><UMI bases>` (no "CB:"/"UMI:" labels, so a default last-underscore-delimited name parser can consume this directly), and removed from the sequence. A distinct step from `UMIEXTRACT` rather than an overloaded 2-arg form of it, since `UMIEXTRACT:<length>:<separator>` already uses a 2nd colon-arg for the separator string. Does not whitelist-correct the barcode; see `BARCODECORRECT` for that.
+    * Both are appended to the read name as bare sequences, `<separator><CB bases><separator><UMI bases>` (no "CB:"/"UMI:" labels, so a default last-underscore-delimited name parser can consume this directly), and removed from the sequence. A distinct step from `UMIEXTRACT` rather than an overloaded 2-arg form of it, since `UMIEXTRACT:<length>:<separator>` already uses a 2nd colon-arg for the separator string. Does not whitelist-correct the barcode; see `UMIDROPLETCORRECT` for that.
     * Unlike `UMIEXTRACT`, no leftover payload is required: a read that is exactly `cbLength + umiLength` bases survives with a zero-length sequence, and is dropped only if shorter than that.
     * Example: `UMISPLIT:16:12` for 10x Chromium 3' v3 (16bp CB + 12bp UMI); `UMISPLIT:12:8` for classic Drop-seq (12bp CB + 8bp UMI).
 
-* `BARCODECORRECT:<whitelistFile>:<cbLength>:<umiLength>:<maxMismatch>[:<separator>]`
+* `UMIDROPLETCORRECT:<whitelistFile>:<cbLength>:<umiLength>:<maxMismatch>[:<separator>]`
     * `whitelistFile`: path to a file of known-good barcodes, one per line, plain text or `.gz`/`.bz2`/`.zip`. May contain colons (e.g. a Windows drive letter) - parsed from the right, so this is safe.
     * `cbLength`, `umiLength`: as in `UMISPLIT`.
     * `maxMismatch`: `0` (exact match only) or `1` (also accept a single-substitution match against the whitelist, first hit wins). Values above `1` are rejected - the neighbourhood size grows combinatorially and isn't worth it for a plain Hamming correction.
     * Combines whitelist correction and header extraction in one step for droplet single-cell platforms where the two always happen together: the barcode is corrected against the whitelist first (dropping the read if no confident match within `maxMismatch`), then the **corrected** barcode and the **raw** UMI are appended to the read name as bare sequences, `<separator><corrected CB bases><separator><raw UMI bases>` (no "CB:"/"UMI:" labels, same convention as `UMISPLIT`), and removed from the sequence.
     * This is a plain Hamming-distance correction, not a quality- and abundance-weighted Bayesian posterior - expect the same ballpark, not bit-identical numbers against other correction implementations. The UMI is never corrected here; real UMI correction needs reads grouped by (cell, gene) after alignment, which a pre-alignment trimmer doesn't have.
     * Same length/payload behaviour as `UMISPLIT`: a read exactly `cbLength + umiLength` bases survives with a zero-length sequence.
-    * Example: `BARCODECORRECT:3M-february-2018.txt.gz:16:12:1` for 10x Chromium 3' v3.
+    * Example: `UMIDROPLETCORRECT:3M-february-2018.txt.gz:16:12:1` for 10x Chromium 3' v3.
 
-* `BDRHAPSODYCORRECT:[<beadVersion>:]<whitelistDir>:<maxMismatch>[:<separator>]`
-    * Whitelist-corrects BD Rhapsody's combinatorial cell label (CLS1/CLS2/CLS3) and extracts it plus the raw UMI to the read name as bare sequences, `<separator><combined barcode><separator><UMI>` - same convention as `UMISPLIT`/`BARCODECORRECT` - removing both from the sequence (any remaining poly-T carryover survives as the new sequence).
+* `UMIRHAPSODYCORRECT:[<beadVersion>:]<whitelistDir>:<maxMismatch>[:<separator>]`
+    * Whitelist-corrects BD Rhapsody's combinatorial cell label (CLS1/CLS2/CLS3) and extracts it plus the raw UMI to the read name as bare sequences, `<separator><combined barcode><separator><UMI>` - same convention as `UMISPLIT`/`UMIDROPLETCORRECT` - removing both from the sequence (any remaining poly-T carryover survives as the new sequence).
     * `beadVersion`: `V1` (default if omitted) or `ENHANCEDV2`.
         * `V1`: R1 (0-indexed) is `CLS1(0-9) - L1(9-21, fixed linker) - CLS2(21-30) - L2(30-43, fixed linker) - CLS3(43-52) - UMI(52-60) - poly-T carryover`. Each CLS is one of 96 known sequences. A cumulative offset derived from CLS2 (checked at nominal, then ±1, then ±2) is applied to CLS3 and the UMI as well.
         * `ENHANCEDV2` (experimental - not validated against real data): R1 is `[prefix inset: 0-3bp] - CLS1(9bp) - L1(~4bp) - CLS2(9bp) - L2(~4bp) - CLS3(9bp) - UMI(8bp) - poly-T carryover`. Each CLS is one of 384 known sequences. CLS1 is searched at inset lengths 0-3 to establish a base offset; CLS2/CLS3/UMI then locate the same way as `V1`, shifted by that offset.
     * `whitelistDir`: directory containing `CLS1.txt`, `CLS2.txt`, `CLS3.txt` (one sequence per line, plain text; 96 entries each for `V1`, 384 for `ENHANCEDV2`). Not bundled with Trimmomatic - obtain from BD Biosciences.
     * `maxMismatch`: `0` or `1`, applied independently to each of the three CLS segments.
     * A read is dropped if shorter than the selected version's full construct, or if any of the three CLS segments has no confident whitelist match within `maxMismatch` at its derived position.
-    * Examples: `BDRHAPSODYCORRECT:whitelists/rhapsody_v1:1` (defaults to `V1`); `BDRHAPSODYCORRECT:ENHANCEDV2:whitelists/rhapsody_enhancedv2:1`.
+    * Examples: `UMIRHAPSODYCORRECT:whitelists/rhapsody_v1:1` (defaults to `V1`); `UMIRHAPSODYCORRECT:ENHANCEDV2:whitelists/rhapsody_enhancedv2:1`.
 
 * `MAXAMBIG:<maxFraction>`
     * `maxFraction`: the maximum allowed fraction of N bases in the read (0.0–1.0). Reads exceeding this fraction are dropped.

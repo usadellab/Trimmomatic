@@ -82,7 +82,7 @@ public class BlockOfWork implements Callable<BlockOfRecords> {
 	/**
 	 * Returns whatever a per-mate step list appended to a record's name (empty
 	 * string if the name is unchanged). Detected as a plain prefix check since
-	 * every name-tagging trimmer (BARCODECORRECT, UMISPLIT, UMIEXTRACT) only
+	 * every name-tagging trimmer (UMIDROPLETCORRECT, UMISPLIT, UMIEXTRACT) only
 	 * ever appends to the existing name, never replaces it.
 	 */
 	private static String appendedNameSuffix(FastqRecord original, FastqRecord result) {
@@ -218,7 +218,7 @@ public class BlockOfWork implements Callable<BlockOfRecords> {
 
 				FastqRecord[] recsForStats = new FastqRecord[2];
 				if (rec1Result != null && rec2Result != null) {
-					// If either mate's step list appended a tag to its name (BARCODECORRECT,
+					// If either mate's step list appended a tag to its name (UMIDROPLETCORRECT,
 					// UMISPLIT, UMIEXTRACT all work by appending, never replacing), mirror
 					// that same tag onto the OTHER mate's name too. Only the mate the tag
 					// was extracted from is usually the one discarded before alignment (the
