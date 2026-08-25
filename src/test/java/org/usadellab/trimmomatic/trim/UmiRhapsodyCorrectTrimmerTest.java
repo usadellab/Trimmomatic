@@ -16,7 +16,7 @@ import org.usadellab.trimmomatic.fastq.FastqRecord;
 
 public class UmiRhapsodyCorrectTrimmerTest {
 
-    // Arbitrary but distinct 9bp codes -- the trimmer never validates L1/L2
+    // Arbitrary but distinct 9bp codes, the trimmer never validates L1/L2
     // content, only their length, so filler bases can be anything.
     private static final String CLS1 = "AAACCCGGT";
     private static final String CLS2 = "TTTGGGCCA";
@@ -25,7 +25,7 @@ public class UmiRhapsodyCorrectTrimmerTest {
     private static final String L1_FILLER = "NNNNNNNNNNNN";    // 12bp, nominal (V1)
     private static final String L2_FILLER = "NNNNNNNNNNNNN";   // 13bp, nominal (V1)
 
-    // ENHANCEDV2 mode's linkers are much shorter than V1's -- 4bp each.
+    // ENHANCEDV2 mode's linkers are much shorter than V1's, 4bp each.
     private static final String L1_FILLER_ENHANCEDV2 = "NNNN";
     private static final String L2_FILLER_ENHANCEDV2 = "NNNN";
 
@@ -93,9 +93,9 @@ public class UmiRhapsodyCorrectTrimmerTest {
         File wl = writeWhitelistDir(CLS1, CLS2, CLS3);
         UmiRhapsodyCorrectTrimmer trimmer = new UmiRhapsodyCorrectTrimmer(wl.getPath() + ":1");
 
-        String shortL1 = L1_FILLER.substring(1); // 11bp instead of 12 -- 1bp deletion
+        String shortL1 = L1_FILLER.substring(1); // 11bp instead of 12, 1bp deletion
         // A real read stays at its fixed cycle length regardless of an internal
-        // deletion -- the missing base just means one extra trailing base (here,
+        // deletion, the missing base just means one extra trailing base (here,
         // arbitrary carryover) gets read instead of being cut off. Pad back out
         // so the read still clears the 60bp minimum-length check.
         String seq = CLS1 + shortL1 + CLS2 + L2_FILLER + CLS3 + UMI + "A";
@@ -110,7 +110,7 @@ public class UmiRhapsodyCorrectTrimmerTest {
         File wl = writeWhitelistDir(CLS1, CLS2, CLS3);
         UmiRhapsodyCorrectTrimmer trimmer = new UmiRhapsodyCorrectTrimmer(wl.getPath() + ":1");
 
-        String longL1 = L1_FILLER + "N"; // 13bp instead of 12 -- 1bp insertion
+        String longL1 = L1_FILLER + "N"; // 13bp instead of 12, 1bp insertion
         String seq = CLS1 + longL1 + CLS2 + L2_FILLER + CLS3 + UMI;
         FastqRecord result = trimmer.processRecord(makeRecord("r1", seq));
 
@@ -123,7 +123,7 @@ public class UmiRhapsodyCorrectTrimmerTest {
         File wl = writeWhitelistDir(CLS1, CLS2, CLS3);
         UmiRhapsodyCorrectTrimmer trimmer = new UmiRhapsodyCorrectTrimmer(wl.getPath() + ":1");
 
-        String shortL1 = L1_FILLER.substring(2); // 10bp instead of 12 -- 2bp deletion
+        String shortL1 = L1_FILLER.substring(2); // 10bp instead of 12, 2bp deletion
         String seq = CLS1 + shortL1 + CLS2 + L2_FILLER + CLS3 + UMI + "AA"; // pad back to 60bp, see comment above
         FastqRecord result = trimmer.processRecord(makeRecord("r1", seq));
 
@@ -136,7 +136,7 @@ public class UmiRhapsodyCorrectTrimmerTest {
         File wl = writeWhitelistDir(CLS1, CLS2, CLS3);
         UmiRhapsodyCorrectTrimmer trimmer = new UmiRhapsodyCorrectTrimmer(wl.getPath() + ":1");
 
-        String longL1 = L1_FILLER + "NN"; // 14bp instead of 12 -- 2bp insertion
+        String longL1 = L1_FILLER + "NN"; // 14bp instead of 12, 2bp insertion
         String seq = CLS1 + longL1 + CLS2 + L2_FILLER + CLS3 + UMI;
         FastqRecord result = trimmer.processRecord(makeRecord("r1", seq));
 
@@ -237,7 +237,7 @@ public class UmiRhapsodyCorrectTrimmerTest {
         File wl = writeWhitelistDir(CLS1, CLS2, CLS3);
         UmiRhapsodyCorrectTrimmer trimmer = new UmiRhapsodyCorrectTrimmer(wl.getPath() + ":0");
 
-        String rawCls1 = "TAACCCGGT"; // 1 mismatch -- should NOT correct at maxMismatch=0
+        String rawCls1 = "TAACCCGGT"; // 1 mismatch, should NOT correct at maxMismatch=0
         String seq = rawCls1 + L1_FILLER + CLS2 + L2_FILLER + CLS3 + UMI;
         assertNull(trimmer.processRecord(makeRecord("r1", seq)));
 

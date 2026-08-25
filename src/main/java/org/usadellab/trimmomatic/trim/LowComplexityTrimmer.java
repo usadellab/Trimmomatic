@@ -52,7 +52,7 @@ public class LowComplexityTrimmer extends AbstractSingleRecordTrimmer {
 
         int total = countA + countC + countG + countT;
         if (total == 0)
-            return null; // read is all-N — drop it
+            return null; // read is all-N, drop it
 
         double entropy = shannonEntropy(total, countA, countC, countG, countT);
 

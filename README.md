@@ -40,13 +40,13 @@ The easiest option is to download a binary release zip, and unpack it somewhere 
 For standard cleaning of Illumina data, you can now invoke Trimmomatic with just the input files. Output files will be created in the same folder as the input files and named automatically (appending `.trimmed.fq.gz` for single read files or `.trimmed.paired.fq.gz` & `.trimmed.unpaired.fq.gz` for paired end read files), and standard trimming steps will be applied.  `ILLUMINACLIP:TruSeq3-SE-GGGGG.fa:2:30:10` (TruSeq3 single-end adapters plus a polyG sequence for NovaSeq two-colour chemistry) for single-end input, or `ILLUMINACLIP:TruSeq3-PE-2-GGGGG.fa:2:30:10` (TruSeq3 paired-end adapters plus a polyG sequence) for paired-end input, followed by `SLIDINGWINDOW:4:20 MINLEN:36`. This mode also automatically detects and uses all available processor threads.
 
 ```bash
-java -jar Trimmomatic-0.42.jar input.fq.gz
+java -jar Trimmomatic-0.43.jar input.fq.gz
 ```
 
 or
 
 ```bash
-java -jar Trimmomatic-0.42.jar input_R1.fq.gz input_R2.fq.gz
+java -jar Trimmomatic-0.43.jar input_R1.fq.gz input_R2.fq.gz
 ```
 
 #### Note for HPC users (SGE, SLURM, LSF, PBS)
@@ -57,10 +57,10 @@ The recommended fix is to combine `MALLOC_ARENA_MAX=2` (prevents the virtual mem
 
 | Scheduler | Recommended invocation |
 |-----------|------------------------|
-| SGE       | `export MALLOC_ARENA_MAX=2`<br>`java -XX:ActiveProcessorCount=$NSLOTS -jar Trimmomatic-0.42.jar R1.fq.gz R2.fq.gz` |
-| SLURM     | `export MALLOC_ARENA_MAX=2`<br>`java -XX:ActiveProcessorCount=$SLURM_CPUS_PER_TASK -jar Trimmomatic-0.42.jar R1.fq.gz R2.fq.gz` |
-| LSF       | `export MALLOC_ARENA_MAX=2`<br>`java -XX:ActiveProcessorCount=$LSB_DJOB_NUMPROC -jar Trimmomatic-0.42.jar R1.fq.gz R2.fq.gz` |
-| PBS/Torque | `export MALLOC_ARENA_MAX=2`<br>`java -XX:ActiveProcessorCount=$NCPUS -jar Trimmomatic-0.42.jar R1.fq.gz R2.fq.gz` |
+| SGE       | `export MALLOC_ARENA_MAX=2`<br>`java -XX:ActiveProcessorCount=$NSLOTS -jar Trimmomatic-0.43.jar R1.fq.gz R2.fq.gz` |
+| SLURM     | `export MALLOC_ARENA_MAX=2`<br>`java -XX:ActiveProcessorCount=$SLURM_CPUS_PER_TASK -jar Trimmomatic-0.43.jar R1.fq.gz R2.fq.gz` |
+| LSF       | `export MALLOC_ARENA_MAX=2`<br>`java -XX:ActiveProcessorCount=$LSB_DJOB_NUMPROC -jar Trimmomatic-0.43.jar R1.fq.gz R2.fq.gz` |
+| PBS/Torque | `export MALLOC_ARENA_MAX=2`<br>`java -XX:ActiveProcessorCount=$NCPUS -jar Trimmomatic-0.43.jar R1.fq.gz R2.fq.gz` |
 
 `MALLOC_ARENA_MAX=2` alone prevents the crash but does not fix the thread count, without `-XX:ActiveProcessorCount`, simplified invocation will still attempt to use the full node CPU count. Memory requirements with the correct thread count: ~8 GiB for single-end, ~16 GiB for paired-end on large datasets.
 
@@ -77,7 +77,7 @@ You often don't need leading and trailing clipping. Also in general setting the 
 If you have questions please don't hesitate to contact us, this is not necessarily one size fits all. (e.g. RNAseq expression analysis vs DNA assembly).
 
 ```bash
-java -jar Trimmomatic-0.42.jar PE \
+java -jar Trimmomatic-0.43.jar PE \
 input_forward.fq.gz input_reverse.fq.gz \
 output_forward_paired.fq.gz output_forward_unpaired.fq.gz \
 output_reverse_paired.fq.gz output_reverse_unpaired.fq.gz \
@@ -87,7 +87,7 @@ ILLUMINACLIP:TruSeq3-PE.fa:2:30:10:2:True LEADING:3 TRAILING:3 MINLEN:36
 for reference only (less sensitive for adapters):
 
 ```bash
-java -jar Trimmomatic-0.42.jar PE \
+java -jar Trimmomatic-0.43.jar PE \
 input_forward.fq.gz input_reverse.fq.gz \
 output_forward_paired.fq.gz output_forward_unpaired.fq.gz \
 output_reverse_paired.fq.gz output_reverse_unpaired.fq.gz \
@@ -107,7 +107,7 @@ This will perform the following:
 To perform the same steps using a single-ended adapter file, run:
 
 ```bash
-java -jar Trimmomatic-0.42.jar SE \
+java -jar Trimmomatic-0.43.jar SE \
 input.fq.gz \
 output.fq.gz \
 ILLUMINACLIP:TruSeq3-SE.fa:2:30:10 \
@@ -205,7 +205,7 @@ java -classpath <path to trimmomatic jar> org.usadellab.trimmomatic.TrimmomaticS
     R1_paired.fastq.gz /dev/null R2_paired.fastq.gz R2_unpaired.fastq.gz \
     ILLUMINACLIP:adapters/TruSeq3-PE.fa:2:30:10 SLIDINGWINDOW:4:20 MINLEN:30
   ```
-* `-pe1steps <steps>` / `-pe2steps <steps>` *(PE only, must be given together)*: run an **independent** step list on each mate instead of one shared/symmetric list. Either mate's steps dropping the read drops the **whole pair** - neither mate ever appears in the unpaired output. Generalises `-technicalread` (which only lets the biological side drop the pair) to single-cell layouts where the barcode/UMI mate itself needs a step that can fail a read, e.g. `UMIDROPLETCORRECT`. Give an empty string (`""`) for a mate that should pass through untouched. Mutually exclusive with `-technicalread`, and with giving steps as the trailing step list (steps must live in one place or the other, not both). Example:
+* `-pe1steps <steps>` / `-pe2steps <steps>` *(PE only, must be given together)*: run an **independent** step list on each mate instead of one shared/symmetric list. If either mate's steps drop the read, the **whole pair** is dropped and neither mate appears in the unpaired output. This generalises `-technicalread`, which only lets the biological side drop the pair, to single-cell layouts where the barcode/UMI mate itself needs a step that can fail a read, such as `UMIDROPLETCORRECT`. Give an empty string (`""`) for a mate that should pass through untouched. Mutually exclusive with `-technicalread`, and with giving steps as the trailing step list. Steps must live in one place or the other. Example:
   ```
   TrimmomaticPE -pe1steps "UMIEXTRACT:28" \
     -pe2steps "ILLUMINACLIP:adapters/TruSeq3-PE.fa:2:30:10 SLIDINGWINDOW:4:20 MINLEN:20" \
@@ -248,6 +248,7 @@ The current trimming steps are:
 * `UMIINDEXMERGE`: Merge a UMI carried in a separate index-read FASTQ (Illumina xGen UDI-UMI adapters) into the read name.
 * `MAXAMBIG`: Drop the read if the fraction of N bases exceeds a maximum.
 * `LONGREADTRIM`: Unified long-read adapter trimmer. Clips terminal adapter residuals (5′ and 3′) and splits chimeric reads at internal adapter junctions in a single step, using edit distance (indel-aware) and k-mer seeding. **Single-end mode only.**
+* `ORIENT`: Put long reads on a common strand by locating a known fixed sequence and reverse-complementing the reads that carry it on the opposite strand. **Single-end mode only.**
 * `TOPHRED33`: Convert quality scores to Phred-33.
 * `TOPHRED64`: Convert quality scores to Phred-64.
 
@@ -325,9 +326,9 @@ Most steps take one or more settings, delimited by `:`.
 
 Every UMI-related step name starts with `UMI` for easy discovery (`--help` output, grepping this README).
 
-**Name-tagging steps and mate synchronisation:** `UMIEXTRACT`, `UMISPLIT`, `UMIDROPLETCORRECT`, `UMIRHAPSODYCORRECT`, and `UMIDIMERCORRECT` (below) all work by appending a tag derived from each mate's *own* leading bases to that read's name, so running them symmetrically on both mates would desynchronise the tags - all five refuse to run in symmetric paired-end mode and must be routed to a single mate via `-pe1steps`/`-pe2steps` or `-technicalread`. When run that way, whichever tag ends up on the mate you tagged is automatically **mirrored onto the other mate's name too** (both keep their own original name, but gain the identical tag suffix). This matters because the tagged mate is usually the purely-technical one discarded before alignment (e.g. 10x R1) - only the biological mate (R2) survives into a BAM, so a tag living only on the discarded mate's name would be invisible to anything downstream reading it back out of the aligned BAM's QNAME during deduplication or counting.
+**Name-tagging steps and mate synchronisation:** `UMIEXTRACT`, `UMISPLIT`, `UMIDROPLETCORRECT`, `UMIRHAPSODYCORRECT`, and `UMIDIMERCORRECT` (below) all work by appending a tag derived from each mate's *own* leading bases to that read's name. Running them symmetrically on both mates would desynchronise the tags, so all five refuse symmetric paired-end mode and must be routed to a single mate via `-pe1steps`/`-pe2steps` or `-technicalread`. When run that way, the tag is automatically **mirrored onto the other mate's name too**. Both mates keep their own original name and gain the identical tag suffix. This matters because the tagged mate is usually the purely technical one discarded before alignment, such as 10x R1. Only the biological mate (R2) survives into a BAM. A tag living only on the discarded mate's name would be invisible to anything downstream reading it back out of the aligned BAM's QNAME during deduplication or counting.
 
-`UMIINDEXMERGE` is the one exception: it looks up the UMI by read ID from an external index-read file, so both mates of a pair independently derive the *same* tag from the *same* lookup - it is safe to run in symmetric paired-end mode with no special routing needed. `UMILONGREADEXTRACT` is single-end oriented (long-read platforms), so the distinction doesn't apply to it in practice.
+`UMIINDEXMERGE` is the one exception. It looks up the UMI by read ID from an external index-read file, so both mates of a pair independently derive the *same* tag from the *same* lookup. It is safe in symmetric paired-end mode and needs no special routing. `UMILONGREADEXTRACT` and `ORIENT` are single-end only, so the distinction does not apply to them.
 
 * `UMIEXTRACT:<length>[:<separator>]`
     * `length`: the number of bases to extract from the 5' end as the UMI.
@@ -340,53 +341,54 @@ Every UMI-related step name starts with `UMI` for easy discovery (`--help` outpu
     * `cbLength`: the number of bases to extract from the 5' end as the cell barcode.
     * `umiLength`: the number of bases to extract immediately after the cell barcode as the UMI.
     * `separator`: (optional) the string used to separate the read name and each tag [default = `_`].
-    * Both are appended to the read name as bare sequences, `<separator><CB bases><separator><UMI bases>` (no "CB:"/"UMI:" labels, so a default last-underscore-delimited name parser can consume this directly), and removed from the sequence. A distinct step from `UMIEXTRACT` rather than an overloaded 2-arg form of it, since `UMIEXTRACT:<length>:<separator>` already uses a 2nd colon-arg for the separator string. Does not whitelist-correct the barcode; see `UMIDROPLETCORRECT` for that.
+    * Both are appended to the read name as bare sequences, `<separator><CB bases><separator><UMI bases>` (no "CB:"/"UMI:" labels, so a default last-underscore-delimited name parser can consume this directly), and removed from the sequence. This is a separate step from `UMIEXTRACT`. An overloaded 2-arg form of `UMIEXTRACT` was not possible, because `UMIEXTRACT:<length>:<separator>` already uses its 2nd colon-arg for the separator string. This step does not whitelist-correct the barcode. See `UMIDROPLETCORRECT` for that.
     * Unlike `UMIEXTRACT`, no leftover payload is required: a read that is exactly `cbLength + umiLength` bases survives with a zero-length sequence, and is dropped only if shorter than that.
     * Example: `UMISPLIT:16:12` for 10x Chromium 3' v3 (16bp CB + 12bp UMI); `UMISPLIT:12:8` for classic Drop-seq (12bp CB + 8bp UMI).
 
 * `UMIDROPLETCORRECT:<whitelistFile>:<cbLength>:<umiLength>:<maxMismatch>[:<separator>]`
-    * `whitelistFile`: path to a file of known-good barcodes, one per line, plain text or `.gz`/`.bz2`/`.zip`. May contain colons (e.g. a Windows drive letter) - parsed from the right, so this is safe.
+    * `whitelistFile`: path to a file of known-good barcodes, one per line, plain text or `.gz`/`.bz2`/`.zip`. May contain colons, for example a Windows drive letter. The argument is parsed from the right, so such a path is safe.
     * `cbLength`, `umiLength`: as in `UMISPLIT`.
-    * `maxMismatch`: `0` (exact match only) or `1` (also accept a single-substitution match against the whitelist, first hit wins). Values above `1` are rejected - the neighbourhood size grows combinatorially and isn't worth it for a plain Hamming correction.
+    * `maxMismatch`: `0` (exact match only) or `1` (also accept a single-substitution match against the whitelist, first hit wins). Values above `1` are rejected. The neighbourhood size grows combinatorially and costs too much for a plain Hamming correction.
     * Combines whitelist correction and header extraction in one step for droplet single-cell platforms where the two always happen together: the barcode is corrected against the whitelist first (dropping the read if no confident match within `maxMismatch`), then the **corrected** barcode and the **raw** UMI are appended to the read name as bare sequences, `<separator><corrected CB bases><separator><raw UMI bases>` (no "CB:"/"UMI:" labels, same convention as `UMISPLIT`), and removed from the sequence.
-    * This is a plain Hamming-distance correction, not a quality- and abundance-weighted Bayesian posterior - expect the same ballpark, not bit-identical numbers against other correction implementations. The UMI is never corrected here; real UMI correction needs reads grouped by (cell, gene) after alignment, which a pre-alignment trimmer doesn't have.
+    * This is a plain Hamming-distance correction. It is not a quality- and abundance-weighted Bayesian posterior, so results from other correction implementations land in the same ballpark and are not bit-identical. The UMI is never corrected here. Real UMI correction needs reads grouped by (cell, gene) after alignment, which a pre-alignment trimmer does not have.
     * Same length/payload behaviour as `UMISPLIT`: a read exactly `cbLength + umiLength` bases survives with a zero-length sequence.
     * Example: `UMIDROPLETCORRECT:3M-february-2018.txt.gz:16:12:1` for 10x Chromium 3' v3.
 
 * `UMIRHAPSODYCORRECT:[<beadVersion>:]<whitelistDir>:<maxMismatch>[:<separator>]`
-    * Whitelist-corrects BD Rhapsody's combinatorial cell label (CLS1/CLS2/CLS3) and extracts it plus the raw UMI to the read name as bare sequences, `<separator><combined barcode><separator><UMI>` - same convention as `UMISPLIT`/`UMIDROPLETCORRECT` - removing both from the sequence (any remaining poly-T carryover survives as the new sequence).
+    * Whitelist-corrects BD Rhapsody's combinatorial cell label (CLS1/CLS2/CLS3) and extracts it plus the raw UMI to the read name as bare sequences, `<separator><combined barcode><separator><UMI>`, using the same convention as `UMISPLIT` and `UMIDROPLETCORRECT`. Both are removed from the sequence. Any remaining poly-T carryover survives as the new sequence.
     * `beadVersion`: `V1` (default if omitted) or `ENHANCEDV2`.
         * `V1`: R1 (0-indexed) is `CLS1(0-9) - L1(9-21, fixed linker) - CLS2(21-30) - L2(30-43, fixed linker) - CLS3(43-52) - UMI(52-60) - poly-T carryover`. Each CLS is one of 96 known sequences. A cumulative offset derived from CLS2 (checked at nominal, then ±1, then ±2) is applied to CLS3 and the UMI as well.
         * `ENHANCEDV2` (experimental - not validated against real data): R1 is `[prefix inset: 0-3bp] - CLS1(9bp) - L1(~4bp) - CLS2(9bp) - L2(~4bp) - CLS3(9bp) - UMI(8bp) - poly-T carryover`. Each CLS is one of 384 known sequences. CLS1 is searched at inset lengths 0-3 to establish a base offset; CLS2/CLS3/UMI then locate the same way as `V1`, shifted by that offset.
-    * `whitelistDir`: directory containing `CLS1.txt`, `CLS2.txt`, `CLS3.txt` (one sequence per line, plain text; 96 entries each for `V1`, 384 for `ENHANCEDV2`). Not bundled with Trimmomatic - obtain from BD Biosciences.
+    * `whitelistDir`: directory containing `CLS1.txt`, `CLS2.txt`, `CLS3.txt` (one sequence per line, plain text; 96 entries each for `V1`, 384 for `ENHANCEDV2`). These are not bundled with Trimmomatic. Obtain them from BD Biosciences.
     * `maxMismatch`: `0` or `1`, applied independently to each of the three CLS segments.
     * A read is dropped if shorter than the selected version's full construct, or if any of the three CLS segments has no confident whitelist match within `maxMismatch` at its derived position.
     * Examples: `UMIRHAPSODYCORRECT:whitelists/rhapsody_v1:1` (defaults to `V1`); `UMIRHAPSODYCORRECT:ENHANCEDV2:whitelists/rhapsody_enhancedv2:1`.
 
 * `UMILONGREADEXTRACT:<anchor>:<umiPattern>:<maxMismatch>:<maxIndelShift>[:<separator>]`
-    * Generic extractor for the long-read amplicon UMI cassette shared by Oxford Nanopore's own "Custom PCR UMI" protocol (SQK-LSK109) and the equivalent PacBio CCS amplicon-UMI design (Karst et al. 2021, [doi:10.1038/s41592-020-01041-y](https://doi.org/10.1038/s41592-020-01041-y)) - both platforms sequence the same synthetic cassette, just with different basecallers and error profiles, so one step covers both rather than one class per platform.
-    * `anchor`: the fixed sequence (A/C/G/T only) immediately preceding the UMI - the fixed portion of the tagging primer. Pass the literal token `NONE` to skip anchor search and assume the UMI starts at position 0, which is required for kits (e.g. PCS114/PCB114) whose strand-switching-incorporated UMI cassette sequence Oxford Nanopore does not publicly disclose.
+    * Generic extractor for the long-read amplicon UMI cassette shared by Oxford Nanopore's own "Custom PCR UMI" protocol (SQK-LSK109) and the equivalent PacBio CCS amplicon-UMI design (Karst et al. 2021, [doi:10.1038/s41592-020-01041-y](https://doi.org/10.1038/s41592-020-01041-y)). Both platforms sequence the same synthetic cassette and differ only in basecaller and error profile. One step therefore covers both.
+    * `anchor`: the fixed sequence (A/C/G/T only) immediately preceding the UMI. This is the fixed portion of the tagging primer. Pass the literal token `NONE` to skip anchor search and assume the UMI starts at position 0. `NONE` is required for kits such as PCS114 and PCB114, whose strand-switching-incorporated UMI cassette sequence Oxford Nanopore does not publicly disclose.
     * `umiPattern`: an IUPAC degeneracy pattern, one character per UMI base, in the same notation ONT/Karst et al. use for their own designs (e.g. `TTVVVVTTVVVVTTVVVVTTVVVVTTT`, `V`=A/C/G, avoiding T-homopolymer runs). Supported symbols: `A`/`C`/`G`/`T` (literal), `N` (any base), and the IUPAC ambiguity codes `R`/`Y`/`S`/`W`/`K`/`M`/`B`/`D`/`H`/`V`. Pattern length fixes the UMI block length.
     * `maxMismatch`: Hamming mismatch budget, applied both when locating the anchor and when validating the UMI block against `umiPattern` (a base outside a position's allowed set counts as a mismatch).
-    * `maxIndelShift` (0-5): nanopore reads are indel-dominated, not substitution-dominated like Illumina - a fixed-offset anchor search misfires whenever a small indel occurs upstream of it. The anchor is searched at offset 0 first, then ±1, ±2, ... up to ±`maxIndelShift` (closest-to-nominal first, same offset-cascade technique as `UMIRHAPSODYCORRECT`), absorbing any single indel before the anchor without needing full banded alignment.
+    * `maxIndelShift` (0 to 5): nanopore errors are dominated by indels, unlike Illumina where substitutions dominate. A fixed-offset anchor search therefore misfires whenever a small indel occurs upstream of the anchor. The anchor is searched at offset 0 first, then ±1, ±2, and so on up to ±`maxIndelShift`, closest to nominal first. This is the same offset-cascade technique `UMIRHAPSODYCORRECT` uses. It absorbs any single indel before the anchor without full banded alignment.
     * `separator`: (optional) as in `UMIEXTRACT` [default = `_`]. The UMI is appended as `<separator>UMI:<bases>`, matching `UMIEXTRACT`'s own tagging convention (there is no whitelist to correct a random UMI against).
-    * **Not a hardcoded per-kit profile** (unlike `UMIRHAPSODYCORRECT`'s `V1`/`ENHANCEDV2`): the ONT/PacBio UMI cassette is not one fixed layout across labs and kits, so anchor, block length and degeneracy are all parameters, not a named variant list.
-    * **Single 5' end only** in this version: the real cassette can place a UMI at both ends via distinct fwd/rev primers, which needs strand-orientation detection this step does not perform. Run a second instance against a reverse-complemented copy of the data if a 3' UMI is also present.
+    * **Not a hardcoded per-kit profile**, unlike `UMIRHAPSODYCORRECT`'s `V1` and `ENHANCEDV2`. The ONT/PacBio UMI cassette has no single fixed layout across labs and kits. Anchor, block length and degeneracy are therefore all parameters.
+    * **Single 5' end only** in this version. The real cassette can place a UMI at both ends via distinct fwd/rev primers. That needs strand-orientation detection, which this step does not perform. Put `ORIENT` in front of it for mixed-orientation data. If a 3' UMI is also present, run a second instance against a reverse-complemented copy of the data.
     * A read whose anchor cannot be located within budget, or whose UMI block fails pattern validation within budget, is dropped.
     * Examples: `UMILONGREADEXTRACT:GTATCGTGTAGAGACTGCGTAGGT:TTVVVVTTVVVVTTVVVVTTVVVVTTT:2:2` (ONT/Karst-style cassette with known anchor); `UMILONGREADEXTRACT:NONE:NNNNNNNNNNNNNNNNNN:1:0` (undisclosed PCS114/PCB114 cassette, no anchor available).
 
 * `UMIDIMERCORRECT:<whitelistFile>:<cbLength>:<umiLength>:<maxMismatchDimers>[:<separator>]`
-    * Whitelist-corrects a cell barcode built from dimer blocks - the scBUC-seq/scCOLOR-seq design (Philpott et al., *Nat Biotechnol* 2021, [doi:10.1038/s41587-021-00965-w](https://doi.org/10.1038/s41587-021-00965-w)) used to make barcode assignment robust to Nanopore's raw error rate for direct single-cell Nanopore transcriptome sequencing. Each barcode position is a 2-base dimer symbol from a restricted set, not a single random base, so a sequencing error typically corrupts at most one whole dimer rather than shifting the read frame.
+    * Whitelist-corrects a cell barcode built from dimer blocks. This is the scBUC-seq/scCOLOR-seq design (Philpott et al., *Nat Biotechnol* 2021, [doi:10.1038/s41587-021-00965-w](https://doi.org/10.1038/s41587-021-00965-w)), which makes barcode assignment robust to Nanopore's raw error rate for direct single-cell Nanopore transcriptome sequencing. Each barcode position is a 2-base dimer symbol from a restricted set. A sequencing error therefore corrupts at most one whole dimer and leaves the read frame intact.
     * `whitelistFile`: as in `UMIDROPLETCORRECT` (path may contain colons, parsed from the right).
     * `cbLength`, `umiLength`: in bases, as in `UMISPLIT`; `cbLength` must be even (every position is a 2-base dimer).
-    * `maxMismatchDimers`: `0` (exact match only) or `1` (also accept a candidate with exactly one dimer replaced by any of the 16 possible 2-base alternatives - correcting a barcode whose error is confined to one dimer, whether it absorbed one or two base-level substitutions). Values above `1` are rejected, same reasoning as `UMIDROPLETCORRECT`'s cap.
+    * `maxMismatchDimers`: `0` (exact match only) or `1`. With `1`, a candidate with exactly one dimer replaced by any of the 16 possible 2-base alternatives is also accepted. This corrects a barcode whose error is confined to one dimer, whether that dimer absorbed one or two base-level substitutions. Values above `1` are rejected, same reasoning as `UMIDROPLETCORRECT`'s cap.
     * The UMI is never corrected here, same rationale as `UMIDROPLETCORRECT`.
     * Same length/payload behaviour as `UMISPLIT`/`UMIDROPLETCORRECT`: a read exactly `cbLength + umiLength` bases survives with a zero-length sequence.
-    * Example: `UMIDIMERCORRECT:sccolor_whitelist.txt:24:14:1` (12-dimer/24bp cell barcode, 14bp raw UMI).
+    * **Input precondition: the barcode and UMI must be the leading bases of the read.** Raw scCOLOR-seq Nanopore reads do not meet this. They are full-length cDNA in mixed orientation. The barcode sits behind a library adapter, the SMART primer `AAGCAGTGGTATCAACGCAGAGT`, and a 2bp spacer. On SRR28589563 that primer occurs around position 31 to 40 in most reads, forward in 64.5% and reverse-complemented in 33.9%. This step has no way to check the precondition. It corrects whatever the leading bases contain, so raw reads produce output that looks valid and is wrong. Put `ORIENT` and `LONGREADTRIM` in front of it (see [Step Order](#step-order)).
+    * Example: `UMIDIMERCORRECT:sccolor_whitelist.txt:24:16:1` (12-dimer/24bp cell barcode, 16bp raw UMI). The scCOLOR-seq authors' own tooling reads a 16bp UMI. TallyNN's `identify_perfect_nano.py` takes bases 26 to 42 after the primer and writes a 40bp barcode-plus-UMI record.
 
 * `UMIINDEXMERGE:<indexFastqFile>[:<separator>]`
-    * Merges a UMI carried in a separate index-read (I2) FASTQ into the read name, for Illumina UMI-adapter designs where the UMI physically replaces the i7 index and is sequenced as its own index read rather than being embedded in R1/R2 (e.g. [IDT xGen UDI-UMI adapters](https://www.idtdna.com/pages/products/next-generation-sequencing/workflow/xgen-ngs-library-preparation/ngs-adapters-indexing-primers/adapters-indexing-primers-for-illumina)).
-    * `indexFastqFile`: path to the index-read FASTQ (plain text or `.gz`/`.bz2`/`.zip`), read entirely into memory at construction into a read-ID → UMI-sequence map - simpler and safer than threading a second synchronised stream through Trimmomatic's multithreaded block pipeline, where "read the next line" per record would race across threads. The join key is the read name up to (not including) the first whitespace, matching how Illumina read IDs are shared verbatim across R1/R2/I2 for the same template.
+    * Merges a UMI carried in a separate index-read (I2) FASTQ into the read name. This covers Illumina UMI-adapter designs where the UMI physically replaces the i7 index and is sequenced as its own index read instead of being embedded in R1/R2, for example [IDT xGen UDI-UMI adapters](https://www.idtdna.com/pages/products/next-generation-sequencing/workflow/xgen-ngs-library-preparation/ngs-adapters-indexing-primers/adapters-indexing-primers-for-illumina).
+    * `indexFastqFile`: path to the index-read FASTQ (plain text or `.gz`/`.bz2`/`.zip`). It is read entirely into memory at construction into a read-ID → UMI-sequence map. Threading a second synchronised stream through Trimmomatic's multithreaded block pipeline would race across threads on "read the next line" per record. The join key is the read name up to the first whitespace, matching how Illumina read IDs are shared verbatim across R1/R2/I2 for the same template.
     * `separator`: (optional) as in `UMIEXTRACT` [default = `_`]. The UMI is appended as `<separator>UMI:<bases>`.
     * A read whose ID has no entry in the index map is dropped (index read missing, or files out of sync).
     * **Safe in symmetric paired-end mode**, unlike every other UMI step above: R1 and R2 of the same template share the same read ID and therefore look up the identical UMI, so tagging both mates independently can never desynchronise them.
@@ -403,22 +405,34 @@ Every UMI-related step name starts with `UMI` for easy discovery (`--help` outpu
     * `minFragLen`: (optional) fragments shorter than this after splitting are discarded [default = 100].
     * `platform`: (optional) `ONT` (default), `CLR`, or `HIFI`. Parsed and validated, so an unrecognised value is rejected, but it selects no behaviour: all three produce identical output. Retained for command-line compatibility, and because falling error rates may justify error-rate-dependent behaviour in future.
     * **Terminal clipping** removes adapter residuals from both the 5′ end (forward orientation only) and 3′ end (all orientations). Partial overlaps down to `minOverlap` are accepted because the adapter may hang off the read end.
-    * **Chimera splitting** scans the read interior for full-length adapter matches using 6-mer seeding and edit-distance verification. Partial interior matches are rejected - requiring the full adapter length prevents false-positive splits in high-error-rate reads. Each split fragment's ends are re-clipped immediately to remove junction residuals. Fragments are named `@readname/split1of2`, `@readname/split2of2`, etc.
-    * Uses **edit distance** rather than Hamming distance, correctly handling the indel-dominated error profile of ONT R9/R10 and PacBio CLR chemistries. For adapter lengths ≤ 64 bp the edit distance is computed with Myers' bit-parallel algorithm (O(n), zero allocation); longer adapters use Wagner-Fischer DP with reusable per-thread scratch arrays. Terminal scans are further accelerated by a 6-mer pre-filter that skips adapters sharing no k-mer with the read's terminal region before invoking edit distance.
+    * **Chimera splitting** scans the read interior for full-length adapter matches using 6-mer seeding and edit-distance verification. Partial interior matches are rejected. Requiring the full adapter length prevents false-positive splits in high-error-rate reads. Each split fragment's ends are re-clipped immediately to remove junction residuals. Fragments are named `@readname/split1of2`, `@readname/split2of2`, and so on.
+    * Uses **edit distance**. This handles the indel-dominated error profile of ONT R9/R10 and PacBio CLR chemistries, which Hamming distance does not. For adapter lengths ≤ 64 bp the edit distance is computed with Myers' bit-parallel algorithm (O(n), zero allocation). Longer adapters use Wagner-Fischer DP with reusable per-thread scratch arrays. Terminal scans are further accelerated by a 6-mer pre-filter that skips adapters sharing no k-mer with the read's terminal region before invoking edit distance.
     * **Single-end mode only.** Raises an error if invoked in paired-end mode.
     * Recommended pipeline: `LONGREADTRIM:<fasta>:<errorRate>:<minOverlap>:<minFragLen>:<platform>  MINLEN:<length>`
-    * Example: `LONGREADTRIM:adapters/ONT-LSK114.fa:0.10:10:100:ONT` - ONT R10.4.1 / Kit 14 reads.
-    * Example: `LONGREADTRIM:adapters/PacBio-Sequel.fa:0.05:10:100:HIFI` - PacBio HiFi / CCS reads.
-    * Example: `LONGREADTRIM:adapters/PacBio-RSII.fa:0.15:10:100:CLR` - PacBio CLR reads.
+    * Example: `LONGREADTRIM:adapters/ONT-LSK114.fa:0.10:10:100:ONT` for ONT R10.4.1 / Kit 14 reads.
+    * Example: `LONGREADTRIM:adapters/PacBio-Sequel.fa:0.05:10:100:HIFI` for PacBio HiFi / CCS reads.
+    * Example: `LONGREADTRIM:adapters/PacBio-RSII.fa:0.15:10:100:CLR` for PacBio CLR reads.
     * Trimmomatic ships adapter files for the most common long-read platforms in the `adapters/` directory:
-        * `adapters/ONT-LSK108-LSK110.fa` - Oxford Nanopore SQK-LSK108, LSK109, LSK110 (R9.4 / R9.4.1). `maxErrorRate` `0.15`, `platform` `ONT`.
-        * `adapters/ONT-LSK112.fa` - Oxford Nanopore SQK-LSK112 (R10.3). `maxErrorRate` `0.10`, `platform` `ONT`.
-        * `adapters/ONT-LSK114.fa` - Oxford Nanopore SQK-LSK114, LSK114-24 (R10.4.1 / Kit 14). `maxErrorRate` `0.10`, `platform` `ONT`.
-        * `adapters/ONT-Rapid.fa` - Oxford Nanopore RAD004, RAD114, RBK004, RBK114 (Rapid kits). `maxErrorRate` `0.15` (R9) / `0.10` (R10), `platform` `ONT`.
-        * `adapters/ONT-cDNA.fa` - Oxford Nanopore SQK-PCS109, PCS114 (direct cDNA / PCR-cDNA). `maxErrorRate` `0.15` (R9) / `0.10` (R10), `platform` `ONT`.
-        * `adapters/PacBio-RSII.fa` - PacBio RS II, SMRTbell adapter + C2 sequencing primer. `maxErrorRate` `0.15`, `platform` `CLR`.
-        * `adapters/PacBio-Sequel.fa` - PacBio Sequel, SequelII, SequelIIe, Revio, ETK2.0, SMRTbell adapter + C2 primer. `maxErrorRate` `0.05` (HiFi/CCS) / `0.15` (CLR), `platform` `HIFI` or `CLR`.
+        * `adapters/ONT-LSK108-LSK110.fa`: Oxford Nanopore SQK-LSK108, LSK109, LSK110 (R9.4 / R9.4.1). `maxErrorRate` `0.15`, `platform` `ONT`.
+        * `adapters/ONT-LSK112.fa`: Oxford Nanopore SQK-LSK112 (R10.3). `maxErrorRate` `0.10`, `platform` `ONT`.
+        * `adapters/ONT-LSK114.fa`: Oxford Nanopore SQK-LSK114, LSK114-24 (R10.4.1 / Kit 14). `maxErrorRate` `0.10`, `platform` `ONT`.
+        * `adapters/ONT-Rapid.fa`: Oxford Nanopore RAD004, RAD114, RBK004, RBK114 (Rapid kits). `maxErrorRate` `0.15` (R9) / `0.10` (R10), `platform` `ONT`.
+        * `adapters/ONT-cDNA.fa`: Oxford Nanopore SQK-PCS109, PCS114 (direct cDNA / PCR-cDNA). `maxErrorRate` `0.15` (R9) / `0.10` (R10), `platform` `ONT`.
+        * `adapters/PacBio-RSII.fa`: PacBio RS II, SMRTbell adapter and C2 sequencing primer. `maxErrorRate` `0.15`, `platform` `CLR`.
+        * `adapters/PacBio-Sequel.fa`: PacBio Sequel, SequelII, SequelIIe, Revio, ETK2.0, SMRTbell adapter and C2 primer. `maxErrorRate` `0.05` (HiFi/CCS) / `0.15` (CLR), `platform` `HIFI` or `CLR`.
     * **Note:** Adapter chemistry evolves with each new kit generation. For kits not listed above, consult your platform's official documentation or community-curated sources such as [Porechop](https://github.com/rrwick/Porechop/blob/master/porechop/adapters.py) (ONT) and the [PacBio SMRTbell adapter documentation](https://www.pacb.com/documentation/).
+
+* `ORIENT:<fasta>:<maxErrorRate>[:<onMissing>]`
+    * Puts long reads on a common strand. It locates a known fixed sequence and reverse-complements the reads that carry it on the opposite strand.
+    * Nanopore and PacBio cDNA libraries are sequenced in both orientations. About half the reads carry their 5′ structure reverse-complemented at the 3′ end. Any step that reads structure from a fixed position, including most of the UMI family, finds nothing at the expected offset in those reads and drops them. On a scCOLOR-seq run (SRR28589563) the library's fixed anchor appears forward in 64.5% of reads and reverse-complemented in 33.9%. Without this step a third of the data is lost.
+    * `fasta`: path to a FASTA file with one or more anchor sequences, each 6 to 64 bp. Use a short fixed landmark such as a primer. A full adapter cassette is too long and is rejected. The path may contain colons and is parsed from the right, as in `UMIDROPLETCORRECT`.
+    * `maxErrorRate`: maximum edit-distance fraction allowed in a confirmed match. `0.15` allows `floor(23 * 0.15) = 3` edits against a 23 bp primer. Nanopore reads seldom carry an anchor without errors, so this value must suit the platform's error rate.
+    * `onMissing`: (optional) `DROP` (default) or `KEEP`. Controls the fate of reads whose orientation cannot be decided.
+    * Each entry is searched in both orientations. Candidate positions come from shared 6-mers. Each candidate is confirmed with the same bit-parallel edit distance `LONGREADTRIM` uses, so indels count as one edit each. The orientation with the lower edit distance wins. A forward win emits the read unchanged. A reverse win emits the read reverse-complemented, with bases complemented and reversed, quality reversed, name and comment kept.
+    * **Undecidable reads** are those with no match within budget in either orientation, and those with an exact tie between the two. A tie happens on chimeras that carry the anchor twice. Both cases follow `onMissing`.
+    * **Single-end mode only.** Reverse-complementing one mate of a pair without the other breaks the pairing. No current long-read platform produces paired-end data.
+    * Example: `ORIENT:smart_primer.fa:0.15` with a FASTA holding the SMART primer `AAGCAGTGGTATCAACGCAGAGT`. This allows 3 edits, the same tolerance the scCOLOR-seq authors' own tooling uses for that primer.
+    * Recommended scCOLOR-seq pipeline: `ORIENT:smart_primer.fa:0.15  LONGREADTRIM:adapters.fa:0.10  HEADCROP:2  UMIDIMERCORRECT:sccolor_whitelist.txt:24:16:1`
 
 * `TOPHRED33`
 
@@ -429,6 +443,12 @@ Every UMI-related step name starts with `UMI` for easy discovery (`--help` outpu
 ## Step Order
 
 Trimming occurs in the order which the steps are specified on the command line. It is recommended that adapter clipping, if required, is done as early as possible in most cases.
+
+For long-read data, put `ORIENT` before adapter clipping. Put both before any step that reads structure from a fixed offset. Such a step drops any read that has nothing matching at the expected position. A pipeline in the wrong order therefore loses reads and reports no error:
+
+```
+ORIENT:anchor.fa:0.15  LONGREADTRIM:adapters.fa:0.10  HEADCROP:2  UMIDIMERCORRECT:whitelist.txt:24:16:1  MINLEN:200
+```
 
 ---
 
@@ -444,7 +464,7 @@ With 'simple' trimming, each adapter sequence is tested against the reads, and i
 
 Naming of the sequences indicates how they should be used. For 'Palindrome' clipping, the sequence names should both start with 'Prefix', and end in '/1' for the forward adapter and '/2' for the reverse adapter. All other sequences are checked using 'simple' mode. Sequences with names ending in '/1' or '/2' will be checked only against the forward or reverse read. Sequences not ending in '/1' or '/2' will be checked against both the forward and reverse read. If you want to check for the reverse-complement of a specific sequence, you need to specifically include the reverse-complemented form of the sequence as well, with another name.
 
-The thresholds used are a simplified log-likelihood approach. Each matching base adds just over 0.6, while each mismatch reduces the alignment score by Q/10. Therefore, a perfect match of a 12 base sequence will score just over 7, while 25 bases are needed to score 15. As such we recommend values between 7 - 15 for this parameter. For palindromic matches, a longer alignment is possible - therefore this threshold can be higher, in the range of 30. The 'seed mismatch' parameter is used to make alignments more efficient, specifying the maximum base mismatch count in the 'seed' (16 bases). Typical values here are 1 or 2.
+The thresholds used are a simplified log-likelihood approach. Each matching base adds just over 0.6, while each mismatch reduces the alignment score by Q/10. Therefore, a perfect match of a 12 base sequence will score just over 7, while 25 bases are needed to score 15. As such we recommend values between 7 and 15 for this parameter. For palindromic matches, a longer alignment is possible, so this threshold can be higher, in the range of 30. The 'seed mismatch' parameter is used to make alignments more efficient, specifying the maximum base mismatch count in the 'seed' (16 bases). Typical values here are 1 or 2.
 
 ---
 

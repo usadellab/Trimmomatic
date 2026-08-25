@@ -14,7 +14,7 @@ import org.usadellab.trimmomatic.fastq.FastqRecord;
  * https://doi.org/10.1038/s41592-020-01041-y). Both platforms sequence the
  * SAME synthetic cassette (gene-specific primer + fixed anchor + structured
  * degenerate UMI block), just with different downstream basecallers and error
- * profiles. One trimmer covers both rather than one class per platform.
+ * profiles. One trimmer therefore covers both platforms.
  *
  * This is intentionally NOT a hardcoded per-kit profile (unlike
  * UMIRHAPSODYCORRECT's V1/ENHANCEDV2 bead profiles). The ONT/PacBio UMI
@@ -40,9 +40,9 @@ import org.usadellab.trimmomatic.fastq.FastqRecord;
  * <maxMismatch>: Hamming mismatch budget, applied twice: once when locating
  * the anchor (plain substitution count against the literal anchor sequence),
  * and once when validating the UMI block against <umiPattern> (a base outside
- * a position's allowed set counts as one mismatch). Kept as a single shared
- * budget rather than two separate knobs: splitting it would just double the
- * argument list without a documented reason real users need them to differ.
+ * a position's allowed set counts as one mismatch). This is one shared budget.
+ * Two separate knobs would double the argument list, and no documented case
+ * exists where real users need the two values to differ.
  *
  * <maxIndelShift>: nanopore reads are indel-dominated, not
  * substitution-dominated like Illumina, so a fixed-offset anchor search would
@@ -58,11 +58,11 @@ import org.usadellab.trimmomatic.fastq.FastqRecord;
  * (this trimmer is an "extract" family member, not a "split"/"correct" one,
  * since there is no whitelist to correct a random UMI against).
  *
- * Single 5' end only in this version: the real ONT/Karst cassette can place a
- * UMI at both ends via distinct fwd/rev primers, but that needs strand
- * orientation detection this trimmer does not perform. Documented limitation,
- * not silently assumed away. Run a second instance against a
- * reverse-complemented copy of the data if a 3' UMI is also present.
+ * Single 5' end only in this version. The real ONT/Karst cassette can place a
+ * UMI at both ends via distinct fwd/rev primers. That needs strand orientation
+ * detection, which this trimmer does not perform. Put ORIENT in front of it for
+ * mixed-orientation data. If a 3' UMI is also present, run a second instance
+ * against a reverse-complemented copy of the data.
  *
  * A read whose anchor cannot be located within budget, or whose UMI block
  * fails pattern validation within budget, is dropped.
@@ -133,7 +133,7 @@ public class UmiLongReadExtractTrimmer extends AbstractSingleRecordTrimmer {
         if (maxIndelShift > 5)
             throw new IllegalArgumentException(
                     "UMILONGREADEXTRACT maxIndelShift must be <= 5, got: " + maxIndelShift
-                    + "; wider shift search isn't worth the combinatorial cost of re-scanning every offset per read");
+                    + ". A wider shift search costs too much, since every offset is re-scanned per read");
 
         separator = arg.length > 4 ? arg[4] : "_";
     }

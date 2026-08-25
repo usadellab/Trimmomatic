@@ -12,8 +12,8 @@ import org.usadellab.trimmomatic.threading.ExceptionHolder;
 
 /**
  * Reads a single interleaved FASTQ source (R1 and R2 alternating) and
- * exposes two Parser views — one for the odd-indexed records (R1) and
- * one for the even-indexed records (R2) — that can be plugged directly
+ * exposes two Parser views, one for the odd-indexed records (R1) and
+ * one for the even-indexed records (R2), that can be plugged directly
  * into the standard TrimmomaticPE pipeline.
  *
  * A single background thread drives all I/O; both half-parsers share its
@@ -53,7 +53,7 @@ public class InterleavedParserPair implements AutoCloseable {
             exceptionHolder.rethrow();
             readerThread.join(100);
         }
-        // Check once more after the thread has died — the exception might have
+        // Check once more after the thread has died, the exception might have
         // been stored after the last isAlive() check in the loop.
         try {
             exceptionHolder.rethrow();
@@ -81,7 +81,7 @@ public class InterleavedParserPair implements AutoCloseable {
                     FastqRecord rec1 = source.next();
                     if (!source.hasNext())
                         throw new RuntimeException(
-                                "Interleaved FASTQ has an odd number of records — " +
+                                "Interleaved FASTQ has an odd number of records, " +
                                 "R1 record '" + rec1.getName() + "' has no R2 partner.");
                     FastqRecord rec2 = source.next();
                     r1.add(rec1);
@@ -120,7 +120,7 @@ public class InterleavedParserPair implements AutoCloseable {
 
         HalfParser(ArrayBlockingQueue<List<FastqRecord>> queue,
                 ExceptionHolder exceptionHolder) {
-            // Pass null — this parser never calls parseBlock() or super.close().
+            // Pass null, this parser never calls parseBlock() or super.close().
             super(null);
             this.queue = queue;
             this.exceptionHolder = exceptionHolder;

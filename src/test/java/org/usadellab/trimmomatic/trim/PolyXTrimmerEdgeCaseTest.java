@@ -45,7 +45,7 @@ public class PolyXTrimmerEdgeCaseTest {
     @Test
     public void testRunOneLessThanMinLengthPassesUnchanged() {
         PolyXTrimmer trimmer = new PolyXTrimmer("A:5");
-        FastqRecord rec = makeRecord("GCGCAAAA"); // 4 A's — one short
+        FastqRecord rec = makeRecord("GCGCAAAA"); // 4 A's, one short
         FastqRecord result = trimmer.processRecord(rec);
         assertNotNull(result);
         assertEquals("GCGCAAAA", result.getSequence());
@@ -127,7 +127,7 @@ public class PolyXTrimmerEdgeCaseTest {
     @Test
     public void testQualityTrimmedCorrectly() {
         PolyXTrimmer trimmer = new PolyXTrimmer("A:3");
-        // "GCGCAAA" — quality: "IIIIJJJ"
+        // "GCGCAAA", quality: "IIIIJJJ"
         // After trim: "GCGC" with quality "IIII"
         FastqRecord rec = makeRecord("GCGCAAA", "IIIIJJJ");
         FastqRecord result = trimmer.processRecord(rec);
@@ -171,7 +171,7 @@ public class PolyXTrimmerEdgeCaseTest {
         // View 2: skip 0, take 10 = same "GCGCGGGGGG"
         FastqRecord leaf = new FastqRecord(mid, 0, 10);
         PolyXTrimmer trimmer = new PolyXTrimmer("G:5");
-        // "GCGCGGGGGG" — 6 G's at end ≥ 5 → trim to "GCGC"
+        // "GCGCGGGGGG", 6 G's at end ≥ 5 → trim to "GCGC"
         FastqRecord result = trimmer.processRecord(leaf);
         assertNotNull(result);
         assertEquals("GCGC", result.getSequence());
@@ -181,7 +181,7 @@ public class PolyXTrimmerEdgeCaseTest {
     public void testViewEntireRunDropped() {
         // View contains only the target base
         FastqRecord base = makeRecord("XXXXXXXXXXXXXXXXAAAAAAAAAAA"); // 10 A's at end
-        FastqRecord view = new FastqRecord(base, 17, 10); // "AAAAAAAAAA" — wait, let me check chars
+        FastqRecord view = new FastqRecord(base, 17, 10); // "AAAAAAAAAA", wait, let me check chars
         // base = 17 X's + 10 A's = 27 chars  ...actually:
         FastqRecord base2 = makeRecord("XXXXXXXXXXXXXXXXX" + "AAAAAAAAAA"); // 17 X + 10 A = 27
         FastqRecord view2 = new FastqRecord(base2, 17, 10); // "AAAAAAAAAA"
@@ -204,7 +204,7 @@ public class PolyXTrimmerEdgeCaseTest {
     @Test
     public void testPolyGNineNotTrimmed() {
         PolyXTrimmer trimmer = new PolyXTrimmer("G:10");
-        FastqRecord rec = makeRecord("ACGTACGTACGGGGGGGGG"); // 9 G's — one short
+        FastqRecord rec = makeRecord("ACGTACGTACGGGGGGGGG"); // 9 G's, one short
         FastqRecord result = trimmer.processRecord(rec);
         assertNotNull(result);
         assertEquals("ACGTACGTACGGGGGGGGG", result.getSequence());
@@ -215,7 +215,7 @@ public class PolyXTrimmerEdgeCaseTest {
 
     @Test
     public void testRunInterruptedByOtherBase() {
-        // "ACGTAAAGAA" — last run of A's is 2 ('A','A' at end), not 5 total
+        // "ACGTAAAGAA", last run of A's is 2 ('A','A' at end), not 5 total
         PolyXTrimmer trimmer = new PolyXTrimmer("A:3");
         FastqRecord rec = makeRecord("ACGTAAAGAA"); // trailing run = 2 A's < 3
         FastqRecord result = trimmer.processRecord(rec);

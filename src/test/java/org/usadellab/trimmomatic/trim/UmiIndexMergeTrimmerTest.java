@@ -48,7 +48,7 @@ public class UmiIndexMergeTrimmerTest {
 
         assertNotNull(result);
         assertEquals("read1_UMI:ACGTACGT", result.getName());
-        assertEquals("PAYLOADSEQ", result.getSequence(), "read sequence itself must be untouched -- UMI lives in a separate file");
+        assertEquals("PAYLOADSEQ", result.getSequence(), "read sequence itself must be untouched, UMI lives in a separate file");
     }
 
     // ------------------------------------------------------------------

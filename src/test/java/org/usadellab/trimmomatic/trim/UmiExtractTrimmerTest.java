@@ -67,7 +67,7 @@ public class UmiExtractTrimmerTest {
 
     @Test
     public void testReadTooShortDropped() {
-        // Read length equals UMI length — no payload remains → drop
+        // Read length equals UMI length, no payload remains → drop
         UmiExtractTrimmer trimmer = new UmiExtractTrimmer("8");
         FastqRecord rec = makeRecord("read1", "ACGTACGT");
         assertNull(trimmer.processRecord(rec));

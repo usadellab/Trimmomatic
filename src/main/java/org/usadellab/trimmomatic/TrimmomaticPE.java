@@ -43,7 +43,7 @@ public class TrimmomaticPE extends Trimmomatic {
 	 * trimmers1/trimmers2 (both non-null together, or both null) select per-mate
 	 * step routing: mate 1 runs only trimmers1, mate 2 runs only trimmers2, and
 	 * either mate's steps returning null drops the whole pair. Mutually exclusive
-	 * with technicalRead != 0 — see BlockOfWork's constructor validation.
+	 * with technicalRead != 0, see BlockOfWork's constructor validation.
 	 */
 	public void processPipeline(FastqParser rawParser1, FastqParser rawParser2, boolean interleaved, File output1P,
 			File output1U, File output2P, File output2U, Trimmer trimmers[], Trimmer trimmers1[], Trimmer trimmers2[],
@@ -72,8 +72,8 @@ public class TrimmomaticPE extends Trimmomatic {
 		}
 
 		// Resources are declared in the reverse of the order they must be closed in
-		// (parser1/parser2 first, statsCollector last) — try-with-resources closes
-		// bottom-to-top — so cleanup still happens if the loop below throws, or if a
+		// (parser1/parser2 first, statsCollector last), try-with-resources closes
+		// bottom-to-top, so cleanup still happens if the loop below throws, or if a
 		// later resource here fails to construct after an earlier one already opened
 		// a file / started a background thread.
 		// parser1/parser2 are no-op HalfParsers when interleaved (interleavedPair owns
@@ -156,7 +156,7 @@ public class TrimmomaticPE extends Trimmomatic {
 			// statsCollector merges each block's stats asynchronously on its own
 			// background thread (SelfThreadedTrimStatsCollector, used when threads > 1).
 			// Reading .getStats() without first waiting for that thread to finish
-			// draining races the merge -- for a fast-to-read input the main thread can
+			// draining races the merge, for a fast-to-read input the main thread can
 			// win and log/write an undercount despite the FASTQ output itself being
 			// complete and correct. close() waits for the thread to finish first.
 			statsCollector.close();
@@ -182,7 +182,7 @@ public class TrimmomaticPE extends Trimmomatic {
 
 	/**
 	 * trimmers1/trimmers2 (both non-null together, or both null) select per-mate
-	 * step routing — see processPipeline's per-mate overload.
+	 * step routing, see processPipeline's per-mate overload.
 	 */
 	public void process(File input1, File input2, boolean interleaved, File output1P, File output1U, File output2P,
 			File output2U, Trimmer trimmers[], Trimmer trimmers1[], Trimmer trimmers2[], int phredOffset,
@@ -206,7 +206,7 @@ public class TrimmomaticPE extends Trimmomatic {
 			t1.join();
 			t2.join();
 			if (openErrors[0] != null || openErrors[1] != null) {
-				// One side may have opened successfully before the other failed —
+				// One side may have opened successfully before the other failed,
 				// close it so its file handle isn't leaked. Only close a parser whose
 				// open() actually succeeded; close() on a never-opened FastqParser
 				// would otherwise touch an unassigned reader field.

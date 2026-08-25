@@ -41,7 +41,7 @@ public class TrimmomaticSE extends Trimmomatic {
 		ExceptionHolder exceptionHolder = new ExceptionHolder();
 
 		// Resources are declared in the reverse of the order they must be closed in
-		// (parser first, statsCollector last) — try-with-resources closes bottom-to-top —
+		// (parser first, statsCollector last), try-with-resources closes bottom-to-top,
 		// so cleanup still happens if the loop below throws, or if a later resource here
 		// fails to construct after an earlier one already started background threads.
 		try (TrimStatsCollector statsCollector = TrimStatsCollector.makeTrimStatsCollector(useStatsWorker, threads,

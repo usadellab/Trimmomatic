@@ -22,11 +22,11 @@ import org.usadellab.trimmomatic.util.compression.CompressionFormat;
  * assignment robust to Nanopore's high raw error rate for direct single-cell
  * Nanopore transcriptome sequencing. Each barcode position is synthesised as
  * a 2-base dimer symbol drawn from a restricted set (e.g. only WW/SS-class
- * dimers), not a single random base, so a single-base sequencing error
- * corrupts at most one dimer symbol rather than shifting the whole barcode's
- * read frame, and one dimer absorbing 1-2 base errors still round-trips to
- * the intended symbol far more often than a plain single-base whitelist
- * scheme would.
+ * dimers) instead of a single random base. A single-base sequencing error
+ * therefore corrupts at most one dimer symbol and leaves the barcode's read
+ * frame intact. A dimer that absorbs one or two base errors still round-trips
+ * to the intended symbol far more often than a plain single-base whitelist
+ * scheme manages.
  *
  * <cbLength> and <umiLength> are given in bases (not dimers) to stay
  * consistent with every other UMI* trimmer's argument convention; both must
@@ -42,11 +42,11 @@ import org.usadellab.trimmomatic.util.compression.CompressionFormat;
  * independently-corrupted dimers is a combinatorially large neighbourhood
  * (numDimers choose 2 x 256) for a plain nearest-whitelist-entry correction,
  * mirroring UMIDROPLETCORRECT/UMIRHAPSODYCORRECT's own single-mismatch cap,
- * for the same reason: not worth it for a correction this simple.
+ * for the same reason. It costs too much for a correction this simple.
  *
  * The UMI itself is never corrected here, same rationale as
  * UMIDROPLETCORRECT: real UMI correction needs reads grouped by (cell, gene)
- * after alignment, which a pre-alignment trimmer doesn't have.
+ * after alignment, which a pre-alignment trimmer does not have.
  *
  * The read is renamed as:
  *   @original_name<separator><corrected CB bases><separator><raw UMI bases>
@@ -56,9 +56,25 @@ import org.usadellab.trimmomatic.util.compression.CompressionFormat;
  * A read whose barcode has no confident match within maxMismatchDimers, or
  * that is shorter than cbLength + umiLength, is dropped.
  *
+ * INPUT PRECONDITION: the barcode and UMI must be the leading bases of the
+ * read. Raw scCOLOR-seq nanopore reads do NOT meet this. They are full-length
+ * cDNA in mixed orientation. The barcode sits behind a library adapter, the
+ * SMART primer AAGCAGTGGTATCAACGCAGAGT, and a 2bp spacer. On SRR28589563 that
+ * primer occurs around position 31 to 40 in most reads, forward in 64.5% and
+ * reverse-complemented in 33.9%. This step has no way to check the
+ * precondition. It corrects whatever the leading bases contain, so raw reads
+ * produce output that looks valid and is wrong. Put ORIENT and LONGREADTRIM in
+ * front of it:
+ *
+ *   ORIENT:smart_primer.fa:0.15 LONGREADTRIM:adapters.fa:0.10 HEADCROP:2 \
+ *   UMIDIMERCORRECT:sccolor_whitelist.txt:24:16:1
+ *
  * Example:
- *   UMIDIMERCORRECT:sccolor_whitelist.txt:24:14:1
- *     - 12-dimer (24bp) cell barcode, 14bp raw UMI, 1 dimer-level correction
+ *   UMIDIMERCORRECT:sccolor_whitelist.txt:24:16:1
+ *     - 12-dimer (24bp) cell barcode, 16bp raw UMI, 1 dimer-level correction.
+ *       The 16bp UMI length is what the scCOLOR-seq authors' own tooling reads
+ *       (TallyNN identify_perfect_nano.py takes bases 26 to 42 after the primer,
+ *       giving a 40bp barcode-plus-UMI record).
  */
 public class UmiDimerCorrectTrimmer extends AbstractSingleRecordTrimmer {
     private static final int MAX_SUPPORTED_MISMATCH_DIMERS = 1;
@@ -100,7 +116,7 @@ public class UmiDimerCorrectTrimmer extends AbstractSingleRecordTrimmer {
         if (maxMismatchDimers < 0 || maxMismatchDimers > MAX_SUPPORTED_MISMATCH_DIMERS)
             throw new IllegalArgumentException(
                     "UMIDIMERCORRECT maxMismatchDimers must be between 0 and " + MAX_SUPPORTED_MISMATCH_DIMERS
-                    + " (got " + maxMismatchDimers + "); a larger neighbourhood isn't worth it for a plain nearest-whitelist-entry correction");
+                    + " (got " + maxMismatchDimers + "). A larger neighbourhood costs too much for a plain nearest-whitelist-entry correction");
 
         whitelist = loadWhitelist(whitelistPath);
     }
@@ -137,7 +153,7 @@ public class UmiDimerCorrectTrimmer extends AbstractSingleRecordTrimmer {
 
     /**
      * Same symmetric-mode hazard as UMIDROPLETCORRECT. See its processRecords()
-     * for the full explanation. Refuse rather than desync mate names.
+     * for the full explanation. Refusing keeps mate names in sync.
      */
     @Override
     public FastqRecord[] processRecords(FastqRecord[] in) {

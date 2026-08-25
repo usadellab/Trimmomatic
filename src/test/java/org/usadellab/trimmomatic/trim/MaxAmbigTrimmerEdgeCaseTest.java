@@ -10,7 +10,7 @@ import org.usadellab.trimmomatic.fastq.FastqRecord;
  * Fringe-case tests for MaxAmbigTrimmer.
  *
  * Covered here:
- *   - View records (trimmed FastqRecord) — ensures getLength() not sequence.length()
+ *   - View records (trimmed FastqRecord), ensures getLength() not sequence.length()
  *   - Floating-point precision at the boundary (1/3 vs 0.333 / 0.334)
  *   - Exact fraction equality uses <= (passes at exact boundary)
  *   - Case sensitivity: lowercase 'n' is NOT counted, only uppercase 'N'
@@ -33,7 +33,7 @@ public class MaxAmbigTrimmerEdgeCaseTest {
     public void testViewRecordNoNInViewButNsInBase() {
         // Base has 10 N's at the end; the view covers only the clean prefix.
         FastqRecord base = makeRecord("ACGTACGTACNNNNNNNNNN"); // 20 chars, 10 N's
-        FastqRecord view = new FastqRecord(base, 0, 10);      // "ACGTACGTAC" — 0 N's
+        FastqRecord view = new FastqRecord(base, 0, 10);      // "ACGTACGTAC", 0 N's
         MaxAmbigTrimmer trimmer = new MaxAmbigTrimmer("0.0");
         // View has 0 N's → fraction 0.0 ≤ 0.0 → pass
         assertNotNull(trimmer.processRecord(view));
@@ -43,7 +43,7 @@ public class MaxAmbigTrimmerEdgeCaseTest {
     public void testViewRecordAllNInView() {
         // Base: first 10 chars clean, last 10 all N.
         FastqRecord base = makeRecord("ACGTACGTACNNNNNNNNNN");
-        FastqRecord view = new FastqRecord(base, 10, 10); // "NNNNNNNNNN" — 10/10 N's
+        FastqRecord view = new FastqRecord(base, 10, 10); // "NNNNNNNNNN", 10/10 N's
         MaxAmbigTrimmer trimmer = new MaxAmbigTrimmer("0.5");
         // 10 N's / 10 bases = 1.0 > 0.5 → drop
         assertNull(trimmer.processRecord(view));
@@ -53,7 +53,7 @@ public class MaxAmbigTrimmerEdgeCaseTest {
     public void testViewRecordFractionWithinThreshold() {
         // Base: "ACGTNN" + 14 clean bases → 20 chars
         FastqRecord base = makeRecord("ACGTNNAAAAAAAAAAAAAAA"); // 21 chars, 2 Ns at pos 4-5
-        // View: chars 0-9 → "ACGTNNAAAA" — 2 N's out of 10 = 0.2
+        // View: chars 0-9 → "ACGTNNAAAA", 2 N's out of 10 = 0.2
         FastqRecord view = new FastqRecord(base, 0, 10);
         MaxAmbigTrimmer trimmer = new MaxAmbigTrimmer("0.2");
         // 2/10 = 0.2 ≤ 0.2 → pass (boundary inclusive)
@@ -62,10 +62,10 @@ public class MaxAmbigTrimmerEdgeCaseTest {
 
     @Test
     public void testChainedViewBothClean() {
-        // View of a view — ensure no offset arithmetic bugs.
+        // View of a view, ensure no offset arithmetic bugs.
         FastqRecord base = makeRecord("NNNNNNNNNNACGTACGTAC"); // 20 chars
-        FastqRecord mid  = new FastqRecord(base, 5, 15);       // "NNNNNACGTACGTAC" — 5/15 N's
-        FastqRecord leaf = new FastqRecord(mid, 5, 10);        // "ACGTACGTAC" — 0/10 N's
+        FastqRecord mid  = new FastqRecord(base, 5, 15);       // "NNNNNACGTACGTAC", 5/15 N's
+        FastqRecord leaf = new FastqRecord(mid, 5, 10);        // "ACGTACGTAC", 0/10 N's
         MaxAmbigTrimmer trimmer = new MaxAmbigTrimmer("0.0");
         assertNotNull(trimmer.processRecord(leaf));
     }

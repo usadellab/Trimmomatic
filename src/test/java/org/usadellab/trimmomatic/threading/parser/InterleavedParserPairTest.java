@@ -155,7 +155,7 @@ public class InterleavedParserPairTest {
     }
 
     // ------------------------------------------------------------------
-    // Multiple pairs — ordering and correct pairing
+    // Multiple pairs, ordering and correct pairing
 
     @Test
     public void testFourPairs_correctOrderAndPairing() throws Exception {
@@ -243,7 +243,7 @@ public class InterleavedParserPairTest {
 
     @Test
     public void testOddRecordCount_exceptionSurfacedOnClose() throws Exception {
-        // 3 records: pair1 + orphan R1 record — must throw
+        // 3 records: pair1 + orphan R1 record, must throw
         File f = writeFastq(
                 fqRecord("r1/1", "AAAA"),
                 fqRecord("r1/2", "CCCC"),
@@ -257,7 +257,7 @@ public class InterleavedParserPairTest {
         drainAllIgnoringExceptions(pair.getR1Parser());
         drainAllIgnoringExceptions(pair.getR2Parser());
 
-        // close() must rethrow — even if the reader thread has already died
+        // close() must rethrow, even if the reader thread has already died
         assertThrows(Exception.class, pair::close);
     }
 
@@ -280,7 +280,7 @@ public class InterleavedParserPairTest {
                 try {
                     List<FastqRecord> block = parser.poll();
                     if (block != null && block.isEmpty()) {
-                        // Received EOF sentinel without exception — reader may not have
+                        // Received EOF sentinel without exception, reader may not have
                         // failed yet; keep retrying for a short period.
                         Thread.sleep(5);
                     }
@@ -344,7 +344,7 @@ public class InterleavedParserPairTest {
                 List<FastqRecord> block = parser.poll();
                 if (block != null && block.isEmpty()) return; // EOF sentinel
             } catch (Exception ignored) {
-                return; // exception observed — stop draining
+                return; // exception observed, stop draining
             }
         }
     }

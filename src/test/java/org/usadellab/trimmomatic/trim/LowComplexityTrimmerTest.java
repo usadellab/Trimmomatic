@@ -15,7 +15,7 @@ public class LowComplexityTrimmerTest {
     }
 
     // ------------------------------------------------------------------
-    // Homopolymer reads — entropy = 0.0
+    // Homopolymer reads, entropy = 0.0
 
     @Test
     public void testHomopolymerDroppedWithThreshold1() {
@@ -32,7 +32,7 @@ public class LowComplexityTrimmerTest {
     }
 
     // ------------------------------------------------------------------
-    // Di-nucleotide repeats — entropy = 1.0
+    // Di-nucleotide repeats, entropy = 1.0
 
     @Test
     public void testDiNucRepeatPassesAtExactThreshold() {
@@ -60,11 +60,11 @@ public class LowComplexityTrimmerTest {
     }
 
     // ------------------------------------------------------------------
-    // Uniform ACGT — entropy = 2.0
+    // Uniform ACGT, entropy = 2.0
 
     @Test
     public void testUniformAcgtAlwaysPasses() {
-        // 16 bases, 4 of each — maximum entropy of 2.0
+        // 16 bases, 4 of each, maximum entropy of 2.0
         LowComplexityTrimmer trimmer = new LowComplexityTrimmer("1.5");
         FastqRecord rec = makeRecord("ACGTACGTACGTACGT");
         assertNotNull(trimmer.processRecord(rec));
@@ -82,7 +82,7 @@ public class LowComplexityTrimmerTest {
     }
 
     // ------------------------------------------------------------------
-    // Mixed N reads — Ns excluded from entropy calculation
+    // Mixed N reads, Ns excluded from entropy calculation
 
     @Test
     public void testNsExcludedFromEntropy() {

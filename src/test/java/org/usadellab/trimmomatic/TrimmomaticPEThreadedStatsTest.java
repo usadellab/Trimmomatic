@@ -23,13 +23,13 @@ import org.usadellab.trimmomatic.util.Logger;
  * main reading loop finished submitting all blocks, without first waiting
  * for that background thread to actually finish draining and merging them.
  * For a fast-to-read input the main thread could win that race and log an
- * undercount -- confirmed empirically: a 10,000-pair input reproducibly
+ * undercount, confirmed empirically: a 10,000-pair input reproducibly
  * reported "Input Read Pairs: 0" at -threads 4 despite the actual FASTQ
  * output being complete and correct (this bug never affected output
  * correctness, only the printed/written summary numbers).
  *
  * Only reproduces through SelfThreadedTrimStatsCollector, which is only used
- * when threads > 1 -- ParasiteTrimStatsCollector (threads == 1) merges
+ * when threads > 1, ParasiteTrimStatsCollector (threads == 1) merges
  * synchronously on the caller's thread and never raced.
  *
  * Fix: TrimmomaticPE now calls statsCollector.close() (which waits for the
@@ -80,7 +80,7 @@ public class TrimmomaticPEThreadedStatsTest {
 
     @Test
     public void testStatsCorrectAtThreads8() throws Exception {
-        // Same check at a different thread count -- the race is timing-dependent,
+        // Same check at a different thread count, the race is timing-dependent,
         // not tied to one specific thread count.
         File r1 = writeFastq("r1_t8.fastq", READ_COUNT);
         File r2 = writeFastq("r2_t8.fastq", READ_COUNT);

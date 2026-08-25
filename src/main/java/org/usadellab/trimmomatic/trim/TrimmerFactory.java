@@ -98,6 +98,9 @@ public class TrimmerFactory {
 		if (trimmerName.equals("LONGREADTRIM"))
 			return new LongReadTrimmer(args);
 
+		if (trimmerName.equals("ORIENT"))
+			return new OrientTrimmer(args);
+
 		throw new RuntimeException("Unknown trimmer: " + trimmerName);
 	}
 }

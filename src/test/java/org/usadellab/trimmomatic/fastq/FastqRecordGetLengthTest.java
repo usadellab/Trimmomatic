@@ -15,7 +15,7 @@ import org.usadellab.trimmomatic.trim.TailCropTrimmer;
 
 /**
  * Verifies that FastqRecord.getLength() returns the correct value for plain
- * records, view records, and nested views — and that calling it on a view does
+ * records, view records, and nested views, and that calling it on a view does
  * NOT trigger lazy materialisation of the sequence string.
  */
 public class FastqRecordGetLengthTest {

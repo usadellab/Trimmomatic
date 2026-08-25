@@ -39,7 +39,7 @@ public class BlockOfWork implements Callable<BlockOfRecords> {
 	/**
 	 * trimmers1/trimmers2 (both non-null together, or both null) select the new
 	 * per-mate routing mode: mate 1 runs only trimmers1, mate 2 runs only
-	 * trimmers2, and either mate's steps returning null drops the whole pair —
+	 * trimmers2, and either mate's steps returning null drops the whole pair,
 	 * neither mate ever goes to the unpaired output in this mode. Mutually
 	 * exclusive with technicalRead != 0 (caller's responsibility to enforce;
 	 * checked defensively in processPE()).
@@ -149,7 +149,7 @@ public class BlockOfWork implements Callable<BlockOfRecords> {
 			if (technicalRead != 0) {
 				// Asymmetric PE: one read is a technical read (barcode/UMI) that passes
 				// through completely untouched; all trimmers run on the biological read only.
-				// If the biological read is dropped, both reads are discarded — the technical
+				// If the biological read is dropped, both reads are discarded, the technical
 				// read NEVER goes to the unpaired output.
 				int bioIdx  = (technicalRead == 1) ? 1 : 0;
 				int techIdx = (technicalRead == 1) ? 0 : 1;
@@ -192,7 +192,7 @@ public class BlockOfWork implements Callable<BlockOfRecords> {
 				}
 			} else if (trimmers1 != null) {
 				// Per-mate mode: each mate runs its own independent step list. Either
-				// mate's steps returning null drops the whole pair — neither mate ever
+				// mate's steps returning null drops the whole pair, neither mate ever
 				// goes to the unpaired output (same invariant as the technicalRead
 				// branch above, generalised to let both sides fail, not just one).
 				FastqRecord[] rec1Array = { originalRecs[0] };
@@ -236,9 +236,9 @@ public class BlockOfWork implements Callable<BlockOfRecords> {
 					} else if (!suffix2.isEmpty() && suffix1.isEmpty()) {
 						rec1Result = new FastqRecord(rec1Result, 0, rec1Result.getLength(), rec1Result.getName() + suffix2);
 					} else if (!suffix1.isEmpty() && !suffix2.isEmpty()) {
-						// Both sides tagged independently -- give both the union of the two
-						// tags rather than silently dropping one, so they still end up
-						// matching each other exactly.
+						// Both sides tagged independently. Give both the union of the two
+						// tags, so they still end up matching each other exactly.
+						// Dropping one would leave the names mismatched.
 						String combined = suffix1 + suffix2;
 						rec1Result = new FastqRecord(rec1Result, 0, rec1Result.getLength(), originalRecs[0].getName() + combined);
 						rec2Result = new FastqRecord(rec2Result, 0, rec2Result.getLength(), originalRecs[1].getName() + combined);

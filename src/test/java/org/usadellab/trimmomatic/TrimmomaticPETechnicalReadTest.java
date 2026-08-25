@@ -77,7 +77,7 @@ public class TrimmomaticPETechnicalReadTest {
     }
 
     // -----------------------------------------------------------------------
-    // technicalRead=1 (R1=tech, R2=bio) — bio read survives
+    // technicalRead=1 (R1=tech, R2=bio), bio read survives
 
     @Test
     public void testTechRead1_bioSurvives_bothInPairedOutput() throws Exception {
@@ -98,7 +98,7 @@ public class TrimmomaticPETechnicalReadTest {
 
     @Test
     public void testTechRead1_techReadSequenceIsUnchanged() throws Exception {
-        // Tech read has N's at the start — HeadCrop(4) would strip them if applied.
+        // Tech read has N's at the start, HeadCrop(4) would strip them if applied.
         File r1in = writeFastq("r1.fastq", fqRecord("p1/1", "NNNNACGT"));    // 8 bp tech
         File r2in = writeFastq("r2.fastq", fqRecord("p1/2", "NNNNTTTTTTTT")); // 12 bp bio
         File r1p = tempDir.resolve("r1p.fastq").toFile();
@@ -108,7 +108,7 @@ public class TrimmomaticPETechnicalReadTest {
 
         run(r1in, r2in, r1p, r1u, r2p, r2u, 1, new HeadCropTrimmer("4"));
 
-        // R1 (tech): must be completely unchanged — 4 N's must still be there
+        // R1 (tech): must be completely unchanged, 4 N's must still be there
         assertEquals(List.of("NNNNACGT"), readSequences(r1p),
                 "Technical read must not be modified by HeadCrop");
         // R2 (bio): first 4 bases cropped
@@ -134,7 +134,7 @@ public class TrimmomaticPETechnicalReadTest {
     }
 
     // -----------------------------------------------------------------------
-    // technicalRead=1 — bio read dropped
+    // technicalRead=1, bio read dropped
 
     @Test
     public void testTechRead1_bioDropped_allOutputsEmpty() throws Exception {
@@ -149,7 +149,7 @@ public class TrimmomaticPETechnicalReadTest {
 
         assertTrue(readSequences(r1p).isEmpty(), "R1 paired must be empty");
         assertTrue(readSequences(r2p).isEmpty(), "R2 paired must be empty");
-        assertTrue(readSequences(r1u).isEmpty(), "R1 unpaired must be empty — tech never goes to unpaired");
+        assertTrue(readSequences(r1u).isEmpty(), "R1 unpaired must be empty, tech never goes to unpaired");
         assertTrue(readSequences(r2u).isEmpty(), "R2 unpaired must be empty");
     }
 
@@ -157,7 +157,7 @@ public class TrimmomaticPETechnicalReadTest {
     public void testTechRead1_techReadNeverInUnpairedOutput() throws Exception {
         // Deliberately verify the critical invariant: tech read NOT in unpaired even when bio drops.
         File r1in = writeFastq("r1.fastq",
-                fqRecord("p1/1", "ACGTACGTACGTACGT"),   // 16 bp tech — long enough to survive if trimmed
+                fqRecord("p1/1", "ACGTACGTACGTACGT"),   // 16 bp tech, long enough to survive if trimmed
                 fqRecord("p2/1", "ACGTACGTACGTACGT")); // second pair
         File r2in = writeFastq("r2.fastq",
                 fqRecord("p1/2", "ACG"),  // 3 bp bio → dropped
@@ -177,11 +177,11 @@ public class TrimmomaticPETechnicalReadTest {
     }
 
     // -----------------------------------------------------------------------
-    // technicalRead=1 — the tech read itself is shorter than MinLen threshold
+    // technicalRead=1, the tech read itself is shorter than MinLen threshold
 
     @Test
     public void testTechRead1_shortTechReadIsPreserved() throws Exception {
-        // R1 is only 4bp — MinLen(10) would drop it if applied. Since R1 is the tech
+        // R1 is only 4bp, MinLen(10) would drop it if applied. Since R1 is the tech
         // read, the trimmer must NOT touch it, and the pair must survive.
         File r1in = writeFastq("r1.fastq", fqRecord("p1/1", "ACGT"));              // 4 bp tech
         File r2in = writeFastq("r2.fastq", fqRecord("p1/2", "ACGTACGTACGTACGT")); // 16 bp bio
@@ -240,7 +240,7 @@ public class TrimmomaticPETechnicalReadTest {
 
     @Test
     public void testTechRead2_techReadUnchangedByHeadCrop() throws Exception {
-        // R2 (tech) has N's — HeadCrop(4) would strip them if applied; must not be applied.
+        // R2 (tech) has N's, HeadCrop(4) would strip them if applied; must not be applied.
         File r1in = writeFastq("r1.fastq", fqRecord("p1/1", "NNNNTTTTTTTT"));  // 12 bp bio
         File r2in = writeFastq("r2.fastq", fqRecord("p1/2", "NNNNACGT"));       // 8 bp tech
         File r1p = tempDir.resolve("r1p.fastq").toFile();
@@ -255,7 +255,7 @@ public class TrimmomaticPETechnicalReadTest {
     }
 
     // -----------------------------------------------------------------------
-    // Multiple pairs — mixed bio outcomes
+    // Multiple pairs, mixed bio outcomes
 
     @Test
     public void testTechRead1_multiplePairs_mixedOutcomes() throws Exception {
@@ -377,12 +377,12 @@ public class TrimmomaticPETechnicalReadTest {
     }
 
     // -----------------------------------------------------------------------
-    // Flag parsing — invalid value via run()
+    // Flag parsing, invalid value via run()
 
     @Test
     public void testFlagParsing_invalidTechReadValue_returnsFalse() throws Exception {
         // -technicalread 3 is out of range: must be 1 or 2.
-        // Provide dummy filenames so the arg count check passes — run() returns false
+        // Provide dummy filenames so the arg count check passes, run() returns false
         // before trying to open any files.
         String[] args = {
             "-technicalread", "3",

@@ -152,7 +152,7 @@ public class LongReadTrimmerTest {
     }
 
     // ------------------------------------------------------------------
-    // Mismatch tolerance (substitution errors — same as Hamming baseline)
+    // Mismatch tolerance (substitution errors, same as Hamming baseline)
 
     @Test
     public void testSubstitutionWithinErrorRate_trimmed() throws Exception {
@@ -250,7 +250,7 @@ public class LongReadTrimmerTest {
 
     @Test
     public void testNInAdapter_isWildcard() throws Exception {
-        // Adapter NNNNNNNN — wildcards match everything.  3′ clips the last 8 bp.
+        // Adapter NNNNNNNN, wildcards match everything.  3′ clips the last 8 bp.
         File fa = singleAdapterFasta("NNNNNNNN");
         // 24 bp read: ACGTACGT + TTTTTTTT + ACGTACGT.
         // 3′ scan will find overlap=8 on the last ACGTACGT (0 edits against NNNNNNNN).
@@ -337,8 +337,8 @@ public class LongReadTrimmerTest {
      * HIFI must NOT split on an interior adapter.
      *
      * <p>That exclusion was measured against exact adapter coordinates on a PacBio
-     * HiFi arm (identity ~99.5%) and found to cost interior recall 0.0000 -- all
-     * 937 interior adapters retained -- plus 3' recall 0.6812, because the
+     * HiFi arm (identity ~99.5%) and found to cost interior recall 0.0000, all
+     * 937 interior adapters retained, plus 3' recall 0.6812, because the
      * near-terminal work is reached only through the interior scan.  On the same
      * arm the old LONGREADSPLIT, a looser matcher with no seed requirement, split
      * HiFi reads for 1352 bases of mid-read over-clipping out of ~100 Mbp and
@@ -381,9 +381,9 @@ public class LongReadTrimmerTest {
 
     // ------------------------------------------------------------------
     // 3′ near-terminal full-adapter scan (HIFI only)
-    // Covers a full adapter followed by a few trailing bases rather than
-    // hanging off the exact 3′ end -- the gap left once interior splitting
-    // is disabled for HIFI.
+    // Covers a full adapter followed by a few trailing bases, instead of one
+    // hanging off the exact 3′ end. This is the gap left once interior
+    // splitting is disabled for HIFI.
 
     @Test
     public void testHiFi3PrimeNearTerminalFullAdapter_trimmed() throws Exception {
@@ -423,8 +423,8 @@ public class LongReadTrimmerTest {
      *
      * <p>835e329's actual intent is preserved by
      * {@link #test3PrimeNearTerminal_payloadResemblingAdapter_notClipped},
-     * which guards payload that merely resembles the adapter.  That is the
-     * property worth asserting; a mandated miss is not.
+     * which guards payload that only resembles the adapter.  That is the
+     * property worth asserting.  A mandated miss is not.
      */
     @Test
     public void testOnt3PrimeNearTerminalGap_nowTrimmed() throws Exception {
@@ -514,8 +514,8 @@ public class LongReadTrimmerTest {
 
     /**
      * Regression guard for 835e329: the reverted brute-force 3' near-terminal
-     * scan over-clipped payload that merely resembled the adapter.  Any fix for
-     * the tests above must stay seed-gated and inside the edit budget -- payload
+     * scan over-clipped payload that only resembled the adapter.  Any fix for
+     * the tests above must stay seed-gated and inside the edit budget, payload
      * sharing a 6-mer with the adapter but exceeding allowedEdits must survive.
      */
     @Test
@@ -545,7 +545,7 @@ public class LongReadTrimmerTest {
      * 3' adapter's first base.
      *
      * <p>The interior scan finds the full adapter at the correct offset, but only
-     * because it now runs on the untrimmed read -- scanning the already-clipped
+     * because it now runs on the untrimmed read, scanning the already-clipped
      * window saw a 1-base remnant and nothing to match.  The straddling hit then
      * pulls trimTo back over the whole adapter.
      */

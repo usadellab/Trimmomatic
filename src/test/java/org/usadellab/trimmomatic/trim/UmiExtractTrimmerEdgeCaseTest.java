@@ -12,11 +12,11 @@ import org.usadellab.trimmomatic.fastq.FastqRecord;
  * Fringe-case tests for UmiExtractTrimmer.
  *
  * Covered here:
- *   - View records as input (including chained views) — verifies view-offset arithmetic
+ *   - View records as input (including chained views), verifies view-offset arithmetic
  *   - UMI length = 1 (minimum useful value)
  *   - UMI length = read length (equals → drop)
  *   - UMI length = read length - 1 (leaves exactly 1-base payload)
- *   - Empty separator via trailing colon in args ("4:") — Java split semantics
+ *   - Empty separator via trailing colon in args ("4:"), Java split semantics
  *   - Read name that already contains the separator string
  *   - UMI bases are all N (ambiguous)
  *   - headPos is accumulated correctly after extraction from a view
@@ -117,7 +117,7 @@ public class UmiExtractTrimmerEdgeCaseTest {
 
     @Test
     public void testVeryLongSeparator() {
-        // Separator must not contain colons — the constructor uses split(":") so
+        // Separator must not contain colons, the constructor uses split(":") so
         // colons inside the separator would be treated as extra split points.
         String sep = "___LONG_SEP___";
         UmiExtractTrimmer trimmer = new UmiExtractTrimmer("3:" + sep);
@@ -156,7 +156,7 @@ public class UmiExtractTrimmerEdgeCaseTest {
     }
 
     // ------------------------------------------------------------------
-    // View records — offset arithmetic
+    // View records, offset arithmetic
 
     @Test
     public void testViewRecord_umiExtractedFromViewStart() {
@@ -220,7 +220,7 @@ public class UmiExtractTrimmerEdgeCaseTest {
     public void testViewRecord_dropsWhenPayloadEmpty() {
         // View of exactly umiLength bases → no payload → drop
         FastqRecord base = makeRecord("r1", "XXXXXXXXXXXXXXXXXACGTACGT"); // 25 chars
-        FastqRecord view = new FastqRecord(base, 17, 8); // "ACGTACGT" — 8 chars
+        FastqRecord view = new FastqRecord(base, 17, 8); // "ACGTACGT", 8 chars
         UmiExtractTrimmer trimmer = new UmiExtractTrimmer("8"); // UMI = 8 = view length
         assertNull(trimmer.processRecord(view));
     }

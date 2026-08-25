@@ -51,10 +51,10 @@ public class PolyXTrimmer extends AbstractSingleRecordTrimmer {
 
         int runLength = len - trimPos;
         if (runLength < minLength)
-            return in; // run too short — pass through unchanged
+            return in; // run too short, pass through unchanged
 
         if (trimPos == 0)
-            return null; // entire read is poly-X — drop it
+            return null; // entire read is poly-X, drop it
 
         return new FastqRecord(in, 0, trimPos);
     }

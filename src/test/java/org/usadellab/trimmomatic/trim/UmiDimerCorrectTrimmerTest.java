@@ -56,7 +56,7 @@ public class UmiDimerCorrectTrimmerTest {
         File wl = writeWhitelist("wl.txt", "AACCGGTT");
         UmiDimerCorrectTrimmer trimmer = new UmiDimerCorrectTrimmer(wl.getPath() + ":8:4:1");
 
-        // First dimer AA -> TT (both bases wrong), rest untouched -- one corrupted dimer.
+        // First dimer AA -> TT (both bases wrong), rest untouched, one corrupted dimer.
         String rawCb = "TTCCGGTT";
         FastqRecord rec = makeRecord("r1", rawCb + "UMIU" + "PAYLOAD");
         FastqRecord result = trimmer.processRecord(rec);
@@ -81,7 +81,7 @@ public class UmiDimerCorrectTrimmerTest {
     }
 
     // ------------------------------------------------------------------
-    // Two corrupted dimers -- beyond correction capability
+    // Two corrupted dimers, beyond correction capability
 
     @Test
     public void testTwoDimersCorrupted_drops() throws Exception {

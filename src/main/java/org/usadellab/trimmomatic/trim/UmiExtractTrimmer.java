@@ -37,10 +37,10 @@ public class UmiExtractTrimmer extends AbstractSingleRecordTrimmer {
     /**
      * UMIEXTRACT renames based on each record's own leading bases, so applying it
      * to both mates of a pair independently (as AbstractSingleRecordTrimmer would)
-     * tags them with different, mismatched suffixes and silently desyncs mate
-     * names — while also chopping real bases off whichever mate isn't actually
-     * the barcode/UMI read. Refuse instead of corrupting: route this step to a
-     * single mate (-pe1steps/-pe2steps or -technicalread), not the shared list.
+     * tags them with different, mismatched suffixes and desyncs mate names with
+     * no error raised. It also chops real bases off whichever mate is not the
+     * barcode/UMI read. This step therefore refuses. Route it to a single mate
+     * via -pe1steps/-pe2steps or -technicalread, not via the shared list.
      */
     @Override
     public FastqRecord[] processRecords(FastqRecord[] in) {
@@ -58,7 +58,7 @@ public class UmiExtractTrimmer extends AbstractSingleRecordTrimmer {
         if (len <= umiLength)
             return null; // read too short to contain a UMI and any payload
 
-        // Materialise only the UMI portion — getSequence() on the full view,
+        // Materialise only the UMI portion. getSequence() on the full view,
         // then substring just the UMI bases.
         String umi = in.getSequence().substring(0, umiLength);
         String newName = in.getName() + separator + "UMI:" + umi;

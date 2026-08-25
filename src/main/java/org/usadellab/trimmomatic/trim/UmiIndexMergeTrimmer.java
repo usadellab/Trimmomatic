@@ -13,7 +13,7 @@ import org.usadellab.trimmomatic.fastq.FastqRecord;
  *
  * Merges a UMI carried in a separate index read (I2) FASTQ into the read
  * name, for Illumina UMI-adapter designs where the UMI physically replaces
- * the i7 index and is sequenced as its own index read rather than being
+ * the i7 index and is sequenced as its own index read instead of being
  * embedded in R1/R2 (e.g. IDT xGen UDI-UMI adapters, see
  * https://www.idtdna.com/pages/products/next-generation-sequencing/workflow/xgen-ngs-library-preparation/ngs-adapters-indexing-primers/adapters-indexing-primers-for-illumina).
  * Every other UMI*-family trimmer assumes the UMI is embedded in the
@@ -22,13 +22,13 @@ import org.usadellab.trimmomatic.fastq.FastqRecord;
  *
  * <indexFastqFile> is read completely into memory at construction (plain
  * text or .gz/.bz2/.zip, same as UMIDROPLETCORRECT/UMIDIMERCORRECT's
- * whitelist loading) into a read-ID -> UMI-sequence map. This is simpler and
- * safer than threading a synchronised second stream through Trimmomatic's
- * pipeline: Trimmomatic processes read blocks across multiple worker threads
- * concurrently, so "read the next line of the index file" per record would
- * race across threads and silently mismatch pairs. A read-ID keyed map has
- * no such ordering dependency, so correctness doesn't rely on block/thread
- * scheduling at all.
+ * whitelist loading) into a read-ID -> UMI-sequence map. Threading a
+ * synchronised second stream through Trimmomatic's pipeline would be harder and
+ * less safe. Trimmomatic processes read blocks across multiple worker threads
+ * concurrently, so "read the next line of the index file" per record would race
+ * across threads and mismatch pairs with no error raised. A read-ID keyed map
+ * has no such ordering dependency, so correctness does not depend on
+ * block/thread scheduling.
  *
  * The read ID used as the join key is the read name up to (but not
  * including) the first whitespace, matching how Illumina read names are

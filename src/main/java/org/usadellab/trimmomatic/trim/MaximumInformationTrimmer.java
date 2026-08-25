@@ -115,7 +115,7 @@ public class MaximumInformationTrimmer extends AbstractSingleRecordTrimmer {
     public FastqRecord processRecord(FastqRecord in) {
         int[] quals = in.getQualityAsInteger(true);
 
-        // Volatile read — no lock needed for the common (no-grow) path.
+        // Volatile read, no lock needed for the common (no-grow) path.
         ScoreArrays sa = scoreArrays;
         if (quals.length > sa.lengthScore().length) {
             grow(quals.length);

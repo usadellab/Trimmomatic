@@ -79,7 +79,7 @@ public class LowComplexityTrimmerEdgeCaseTest {
     }
 
     // ------------------------------------------------------------------
-    // 3-base alphabet — entropy = log2(3) ≈ 1.5849625
+    // 3-base alphabet, entropy = log2(3) ≈ 1.5849625
 
     @Test
     public void testThreeEqualBases_belowLog2of3_passes() {
@@ -97,7 +97,7 @@ public class LowComplexityTrimmerEdgeCaseTest {
     }
 
     // ------------------------------------------------------------------
-    // 4-base alphabet — entropy = 2.0 exactly
+    // 4-base alphabet, entropy = 2.0 exactly
 
     @Test
     public void testFourEqualBases_entropy2_passes() {
@@ -120,7 +120,7 @@ public class LowComplexityTrimmerEdgeCaseTest {
     }
 
     // ------------------------------------------------------------------
-    // Reads with N's — N bases excluded from entropy
+    // Reads with N's, N bases excluded from entropy
 
     @Test
     public void testReadWithNs_onlyClearedBasesCountedForEntropy() {
@@ -145,7 +145,7 @@ public class LowComplexityTrimmerEdgeCaseTest {
     public void testViewRecord_lowComplexityPart_dropped() {
         // Base: 10 clean chars + 10 all-A chars
         FastqRecord base = makeRecord("ACGTACGTACAAAAAAAAAA"); // 20 chars
-        FastqRecord viewLow = new FastqRecord(base, 10, 10); // "AAAAAAAAAA" — entropy 0
+        FastqRecord viewLow = new FastqRecord(base, 10, 10); // "AAAAAAAAAA", entropy 0
         LowComplexityTrimmer trimmer = new LowComplexityTrimmer("0.5");
         assertNull(trimmer.processRecord(viewLow));
     }
@@ -154,7 +154,7 @@ public class LowComplexityTrimmerEdgeCaseTest {
     public void testViewRecord_highComplexityPart_passes() {
         // Base: 10 all-A + 10 uniform ACGT
         FastqRecord base = makeRecord("AAAAAAAAAACGTACGTACG"); // 20 chars
-        FastqRecord viewHigh = new FastqRecord(base, 10, 10); // "CGTACGTACG" — entropy ~2
+        FastqRecord viewHigh = new FastqRecord(base, 10, 10); // "CGTACGTACG", entropy ~2
         LowComplexityTrimmer trimmer = new LowComplexityTrimmer("1.5");
         assertNotNull(trimmer.processRecord(viewHigh));
     }

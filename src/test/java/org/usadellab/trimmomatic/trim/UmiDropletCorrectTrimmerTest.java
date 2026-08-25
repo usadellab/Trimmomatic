@@ -96,7 +96,7 @@ public class UmiDropletCorrectTrimmerTest {
         File wl = writeWhitelist("wl.txt", "AAAACCCCGGGGTTTT");
         UmiDropletCorrectTrimmer trimmer = new UmiDropletCorrectTrimmer(wl.getPath() + ":16:8:1");
 
-        // Positions 0 and 1 both wrong -- 2 mismatches, beyond maxMismatch=1
+        // Positions 0 and 1 both wrong, 2 mismatches, beyond maxMismatch=1
         String rawCb = "TTAACCCCGGGGTTTT";
         FastqRecord rec = makeRecord("r1", rawCb + "UMIUMIUM" + "PAYLOAD1");
         assertNull(trimmer.processRecord(rec));
@@ -107,7 +107,7 @@ public class UmiDropletCorrectTrimmerTest {
         File wl = writeWhitelist("wl.txt", "AAAACCCCGGGGTTTT");
         UmiDropletCorrectTrimmer trimmer = new UmiDropletCorrectTrimmer(wl.getPath() + ":16:8:0");
 
-        String oneOff = "TAAACCCCGGGGTTTT"; // 1 mismatch -- should NOT correct at maxMismatch=0
+        String oneOff = "TAAACCCCGGGGTTTT"; // 1 mismatch, should NOT correct at maxMismatch=0
         FastqRecord rec = makeRecord("r1", oneOff + "UMIUMIUM" + "PAYLOAD1");
         assertNull(trimmer.processRecord(rec));
 

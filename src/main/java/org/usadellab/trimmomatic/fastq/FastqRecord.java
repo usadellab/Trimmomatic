@@ -10,7 +10,7 @@ public class FastqRecord {
 	private int phredOffset;
 	private int headPos;
 
-	// View fields — non-null only when this record is a trimmed view of another.
+	// View fields, non-null only when this record is a trimmed view of another.
 	// Avoids substring() allocations for intermediate trimming steps; sequence and
 	// quality are materialised lazily on first access via getSequence()/getQuality().
 	private String rawSequence;
@@ -18,7 +18,7 @@ public class FastqRecord {
 	private int viewOffset;
 	private int viewLength;
 
-	// Quality integer arrays — computed lazily and invalidated when phredOffset changes.
+	// Quality integer arrays, computed lazily and invalidated when phredOffset changes.
 	private int[] qualityCacheRaw;
 	private int[] qualityCacheZeroNs;
 

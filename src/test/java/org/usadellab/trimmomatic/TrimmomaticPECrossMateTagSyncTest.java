@@ -29,7 +29,7 @@ import org.usadellab.trimmomatic.util.Logger;
  * downstream that reads it back out post-alignment.
  *
  * BlockOfWork's per-mate branch now mirrors any appended name tag onto the
- * OTHER mate automatically -- detected generically (any name-tagging step
+ * OTHER mate automatically, detected generically (any name-tagging step
  * only ever appends, never replaces), so this works for UMIEXTRACT, UMISPLIT
  * and UMIDROPLETCORRECT without any of those classes needing to know about the
  * other mate at all.
@@ -122,7 +122,7 @@ public class TrimmomaticPECrossMateTagSyncTest {
     @Test
     public void testNeitherMateRenames_namesUntouched() throws Exception {
         // Regression: the common case (quality trim only, no renaming step anywhere)
-        // must be completely unaffected -- this is the exact scenario Phase 0's own
+        // must be completely unaffected, this is the exact scenario Phase 0's own
         // tests already covered, confirming this change doesn't disturb it.
         File r1in = writeFastq("r1.fastq", fqRecord("p1/1", "ACGTACGTACGT"));
         File r2in = writeFastq("r2.fastq", fqRecord("p1/2", "TTTTGGGGCCCC"));
@@ -135,8 +135,8 @@ public class TrimmomaticPECrossMateTagSyncTest {
                 new Trimmer[] { new HeadCropTrimmer("4") },
                 new Trimmer[] { new MinLenTrimmer(1) });
 
-        assertEquals("p1/1", readNames(r1p).get(0), "no tagging step used -- name must be completely untouched");
-        assertEquals("p1/2", readNames(r2p).get(0), "no tagging step used -- name must be completely untouched");
+        assertEquals("p1/1", readNames(r1p).get(0), "no tagging step used, name must be completely untouched");
+        assertEquals("p1/2", readNames(r2p).get(0), "no tagging step used, name must be completely untouched");
     }
 
     @Test
@@ -155,6 +155,6 @@ public class TrimmomaticPECrossMateTagSyncTest {
         assertEquals("p1/1_UMI:AAAA_UMI:CCCC", readNames(r1p).get(0),
                 "mate 1 keeps its own name, gains BOTH tags (its own plus mate 2's)");
         assertEquals("p1/2_UMI:AAAA_UMI:CCCC", readNames(r2p).get(0),
-                "mate 2 keeps its own name, gains BOTH tags (its own plus mate 1's) -- identical suffix to mate 1's");
+                "mate 2 keeps its own name, gains BOTH tags (its own plus mate 1's), identical suffix to mate 1's");
     }
 }

@@ -19,11 +19,11 @@ import org.usadellab.trimmomatic.fastq.FastqRecord;
  * UMISPLIT/UMIDROPLETCORRECT. One trimmer covers every supported bead version --
  * <beadVersion> selects the segment lengths, linker lengths and prefix-inset
  * handling internally, the same way LONGREADTRIM's platform hint (ONT/CLR/HIFI)
- * selects behaviour within one class rather than one class per platform.
+ * selects behaviour within one class. Neither needs one class per platform.
  *
- * <beadVersion> is optional and defaults to "V1" if omitted -- see the
- * constructor for why it is a leading token rather than a trailing one like
- * LONGREADTRIM's platform hint.
+ * <beadVersion> is optional and defaults to "V1" if omitted. The constructor
+ * explains why it is a leading token, unlike LONGREADTRIM's trailing platform
+ * hint.
  *
  * ===========================================================================
  * V1 (default; empirically confirmed against real data and BD's own public
@@ -35,7 +35,7 @@ import org.usadellab.trimmomatic.fastq.FastqRecord;
  * Each CLS is one of 96 known sequences. CLS1 is always read at its fixed
  * nominal position: nothing precedes it to derive an offset from. A single
  * cumulative offset is then derived from CLS2 (checked at nominal, then +/-1,
- * then +/-2 -- this catches any indel that occurred anywhere before CLS2, in
+ * then +/-2, this catches any indel that occurred anywhere before CLS2, in
  * CLS1 or L1, since only the cumulative shift at CLS2's position matters) and
  * applied to CLS3 and the UMI too, without re-deriving it a second time at L2.
  * This was verified empirically on real BD Rhapsody excerpt data (see
@@ -44,14 +44,14 @@ import org.usadellab.trimmomatic.fastq.FastqRecord;
  * CLS2's offset failed to place L2 exactly, and moved the CLS3 whitelist-hit
  * rate by under 0.2 percentage points across all three real samples tested.
  * The other ~99% of L2 mismatches are simple substitution noise on a 13bp
- * window, not a second indel -- an offset search cannot fix a substitution.
+ * window, not a second indel, an offset search cannot fix a substitution.
  * If CLS2 has no exact match at any of the five candidate offsets, one
  * Hamming-1 correction attempt is made at the nominal (zero) offset only.
  *
  * ===========================================================================
- * ENHANCEDV2 (best-guess design, NOT validated against real data -- see below)
+ * ENHANCEDV2 (best-guess design, NOT validated against real data, see below)
  * ===========================================================================
- * Named after BD's own "Enhanced V2" bead designation specifically -- BD's
+ * Named after BD's own "Enhanced V2" bead designation specifically, BD's
  * bead line-up isn't a clean V1/V2/V3 progression: "V1" and "Enhanced" are
  * separate bead families, and "Enhanced" itself has sub-generations
  * ("Enhanced", "Enhanced V2", "Enhanced V3"). The structure below is what's
@@ -66,8 +66,8 @@ import org.usadellab.trimmomatic.fastq.FastqRecord;
  *   poly-T carryover
  * Each CLS is one of 384 known sequences (vs. V1's 96). The prefix inset is a
  * deliberate, always-present variable-length element (not sequencing noise),
- * so it is resolved first: CLS1 is searched for at each candidate inset length
- * (0, 1, 2, 3, in that order, first exact whitelist hit wins) rather than at a
+ * so it is resolved first. CLS1 is searched for at each candidate inset length
+ * (0, 1, 2, 3, in that order, first exact whitelist hit wins) instead of at a
  * single fixed position. Whatever inset length is found becomes the base
  * offset, and CLS2/CLS3/UMI localisation then proceeds exactly as in V1
  * (CLS2 offset search, then straight-line propagation to CLS3/UMI), just
@@ -86,10 +86,10 @@ import org.usadellab.trimmomatic.fastq.FastqRecord;
  * ===========================================================================
  * The CLS1/CLS2/CLS3 codebooks are BD Biosciences' own commercial-kit
  * reference data with no confirmed redistribution license, so they are not
- * bundled with Trimmomatic -- <whitelistDir> must be supplied and must
+ * bundled with Trimmomatic, <whitelistDir> must be supplied and must
  * contain CLS1.txt, CLS2.txt and CLS3.txt (one sequence per line, plain text;
- * 96 entries each for V1, 384 each for Enhanced V2 -- small enough in either
- * case that compressed-format support isn't worth the complexity). A single
+ * 96 entries each for V1, 384 each for Enhanced V2, small enough in either
+ * case that compressed-format support would add complexity for no gain). A single
  * directory argument is used instead of three separate file paths because
  * three colon-delimited Windows paths in one argument cannot be parsed back
  * apart from each other.
@@ -126,11 +126,11 @@ public class UmiRhapsodyCorrectTrimmer extends AbstractSingleRecordTrimmer {
         }
     }
 
-    // V1: no prefix inset -- candidate list of just {0} makes the inset-search
+    // V1: no prefix inset, candidate list of just {0} makes the inset-search
     // loop below degenerate into "always try position 0", identical to this
     // trimmer's original V1-only behaviour.
     private static final BeadProfile PROFILE_V1 = new BeadProfile(9, 12, 9, 13, 9, 8, new int[] { 0 });
-    // ENHANCEDV2: best-guess, see class javadoc -- NOT validated against real data.
+    // ENHANCEDV2: best-guess, see class javadoc, NOT validated against real data.
     private static final BeadProfile PROFILE_ENHANCEDV2 = new BeadProfile(9, 4, 9, 4, 9, 8, new int[] { 0, 1, 2, 3 });
 
     private final int cls1Len, cls2Len, cls3Len, umiLen;
@@ -187,7 +187,7 @@ public class UmiRhapsodyCorrectTrimmer extends AbstractSingleRecordTrimmer {
         if (maxMismatch < 0 || maxMismatch > MAX_SUPPORTED_MISMATCH)
             throw new IllegalArgumentException(
                     "UMIRHAPSODYCORRECT maxMismatch must be between 0 and " + MAX_SUPPORTED_MISMATCH
-                    + " (got " + maxMismatch + "); larger neighbourhoods aren't worth it for a plain Hamming correction");
+                    + " (got " + maxMismatch + "). Larger neighbourhoods cost too much for a plain Hamming correction");
 
         cls1Len = profile.cls1Len;
         cls2Len = profile.cls2Len;
@@ -234,8 +234,8 @@ public class UmiRhapsodyCorrectTrimmer extends AbstractSingleRecordTrimmer {
     }
 
     /**
-     * Same symmetric-mode hazard as UMIDROPLETCORRECT -- see its processRecords()
-     * for the full explanation. Refuse rather than desync mate names.
+     * Same symmetric-mode hazard as UMIDROPLETCORRECT, see its processRecords()
+     * for the full explanation. Refusing keeps mate names in sync.
      */
     @Override
     public FastqRecord[] processRecords(FastqRecord[] in) {
@@ -287,7 +287,7 @@ public class UmiRhapsodyCorrectTrimmer extends AbstractSingleRecordTrimmer {
             return null;
 
         // CLS2 offset search, shifted by whatever prefix inset was resolved
-        // above -- otherwise identical to V1's original CLS2-anchored search.
+        // above, otherwise identical to V1's original CLS2-anchored search.
         Integer midOffset = null;
         String cls2 = null;
         for (int delta : SEARCH_OFFSETS) {
@@ -330,7 +330,7 @@ public class UmiRhapsodyCorrectTrimmer extends AbstractSingleRecordTrimmer {
 
         String umi = seq.substring(umiStart, umiEnd);
 
-        // Bare sequences, no "CLS:"/"UMI:" labels -- see class javadoc.
+        // Bare sequences, no "CLS:"/"UMI:" labels, see class javadoc.
         String newName = in.getName() + separator + cls1 + cls2 + cls3 + separator + umi;
         return new FastqRecord(in, umiEnd, len - umiEnd, newName);
     }

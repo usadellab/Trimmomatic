@@ -20,7 +20,7 @@ public class PolyXTrimmerTest {
         // 5-base polyA tail, minLength=10 → pass unchanged
         PolyXTrimmer trimmer = new PolyXTrimmer("A:10");
         FastqRecord rec = makeRecord("ACGTACGTAAAAAA");
-        // tail has 6 A's — still below min 10 → unchanged
+        // tail has 6 A's, still below min 10 → unchanged
         FastqRecord result = trimmer.processRecord(rec);
         assertNotNull(result);
         assertEquals(rec.getSequence(), result.getSequence());

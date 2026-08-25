@@ -87,7 +87,7 @@ public class TrimmomaticPEPerMateStepsTest {
     @Test
     public void testBothSurvive_independentStepLists() throws Exception {
         // Mate 1: HeadCrop(4) only. Mate 2: HeadCrop(2) only. Different steps,
-        // applied independently -- proves the two lists don't leak into each other.
+        // applied independently, proves the two lists don't leak into each other.
         File r1in = writeFastq("r1.fastq", fqRecord("p1/1", "NNNNACGTACGT"));  // 12bp
         File r2in = writeFastq("r2.fastq", fqRecord("p1/2", "NNTTTTGGGGCCCC")); // 14bp
         File r1p = tempDir.resolve("r1p.fastq").toFile();
@@ -129,7 +129,7 @@ public class TrimmomaticPEPerMateStepsTest {
 
     @Test
     public void testMate2Drops_wholePairDropped() throws Exception {
-        // Mirror of the above with roles swapped -- this is exactly the case
+        // Mirror of the above with roles swapped, this is exactly the case
         // -technicalread could NOT express (only the bio side could drop there).
         File r1in = writeFastq("r1.fastq", fqRecord("p1/1", "ACGTACGTACGTACGT")); // 16bp -> would survive
         File r2in = writeFastq("r2.fastq", fqRecord("p1/2", "ACGT"));              // 4bp -> dropped by MinLen(10)

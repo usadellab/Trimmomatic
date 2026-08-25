@@ -28,27 +28,27 @@ import org.usadellab.trimmomatic.util.compression.CompressionFormat;
  * (cbLength positions x 3 alternate bases, or all 4 at an N) is checked
  * against the whitelist, first hit wins. This is a plain Hamming-distance
  * correction, not the quality- and abundance-weighted Bayesian posterior
- * Cell Ranger's own algorithm uses -- it will land in the same ballpark, not
+ * Cell Ranger's own algorithm uses, it will land in the same ballpark, not
  * be bit-identical to Cell Ranger's numbers. maxMismatch above 1 is rejected
- * outright: the neighbourhood size grows combinatorially (1080 candidates at
- * 2 mismatches for a 16bp barcode), not worth it for a correction this
- * simple.
+ * outright. The neighbourhood size grows combinatorially, reaching 1080
+ * candidates at 2 mismatches for a 16bp barcode, which costs too much for a
+ * correction this simple.
  *
  * A read whose barcode has no confident match within maxMismatch is
- * dropped. No leftover payload is required -- a read that is exactly
+ * dropped. No leftover payload is required, a read that is exactly
  * cbLength + umiLength bases (the common case: 10x Chromium R1 is 100%
  * barcode+UMI, zero biological payload by design) survives with a
  * zero-length sequence; it is dropped only if shorter than that.
  *
  * The read is renamed as:
  *   @original_name<separator><corrected CB bases><separator><raw UMI bases>
- * -- bare sequences, no "CB:"/"UMI:" labels, matching umi_tools extract's own
+ * These are bare sequences, no "CB:"/"UMI:" labels, matching umi_tools extract's own
  * convention so umi_tools dedup/count's default read-name parser (last
  * underscore-delimited, expects a bare nucleotide string) can consume this
  * directly.
  *
- * UMI is never corrected here -- real UMI correction needs reads grouped by
- * (cell, gene) after alignment, which a pre-alignment trimmer doesn't have.
+ * UMI is never corrected here, real UMI correction needs reads grouped by
+ * (cell, gene) after alignment, which a pre-alignment trimmer does not have.
  *
  * Example:
  *   UMIDROPLETCORRECT:3M-february-2018.txt.gz:16:12:1
@@ -67,13 +67,13 @@ public class UmiDropletCorrectTrimmer extends AbstractSingleRecordTrimmer {
     public UmiDropletCorrectTrimmer(String args) throws IOException {
         // The whitelist path can itself contain colons (a Windows drive letter,
         // "C:\...", is the common real case), which breaks a naive split(":")
-        // into <path>:<cbLength>:<umiLength>:<maxMismatch>[:<separator>] -- the
+        // into <path>:<cbLength>:<umiLength>:<maxMismatch>[:<separator>], the
         // path would get sliced apart along with the real args. Parse from the
         // right instead: the last 3 tokens are always cbLength:umiLength:
         // maxMismatch; a 4th trailing token, if present, is the separator,
         // distinguished from "the path had another colon" by whether the last
         // token parses as an integer (a separator string realistically never
-        // will -- this heuristic would misfire only for a purely numeric
+        // will, this heuristic would misfire only for a purely numeric
         // separator, which no existing UMIEXTRACT/UMISPLIT test or example uses).
         String[] tokens = args.split(":");
         if (tokens.length < 4)
@@ -100,7 +100,7 @@ public class UmiDropletCorrectTrimmer extends AbstractSingleRecordTrimmer {
         if (maxMismatch < 0 || maxMismatch > MAX_SUPPORTED_MISMATCH)
             throw new IllegalArgumentException(
                     "UMIDROPLETCORRECT maxMismatch must be between 0 and " + MAX_SUPPORTED_MISMATCH
-                    + " (got " + maxMismatch + "); larger neighbourhoods aren't worth it for a plain Hamming correction");
+                    + " (got " + maxMismatch + "). Larger neighbourhoods cost too much for a plain Hamming correction");
 
         whitelist = loadWhitelist(whitelistPath);
     }
@@ -136,8 +136,8 @@ public class UmiDropletCorrectTrimmer extends AbstractSingleRecordTrimmer {
     }
 
     /**
-     * Same symmetric-mode hazard as UMIEXTRACT -- see its processRecords() for
-     * the full explanation. Refuse rather than desync mate names.
+     * Same symmetric-mode hazard as UMIEXTRACT, see its processRecords() for
+     * the full explanation. Refusing keeps mate names in sync.
      */
     @Override
     public FastqRecord[] processRecords(FastqRecord[] in) {
@@ -164,7 +164,7 @@ public class UmiDropletCorrectTrimmer extends AbstractSingleRecordTrimmer {
         if (correctedCb == null)
             return null; // no confident whitelist match within maxMismatch
 
-        // Bare sequences, no "CB:"/"UMI:" labels -- see class javadoc.
+        // Bare sequences, no "CB:"/"UMI:" labels, see class javadoc.
         String newName = in.getName() + separator + correctedCb + separator + umi;
         return new FastqRecord(in, totalLength, len - totalLength, newName);
     }

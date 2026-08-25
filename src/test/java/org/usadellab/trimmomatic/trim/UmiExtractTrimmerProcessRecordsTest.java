@@ -9,16 +9,16 @@ import org.junit.jupiter.api.Test;
 import org.usadellab.trimmomatic.fastq.FastqRecord;
 
 /**
- * Tests for UmiExtractTrimmer.processRecords(FastqRecord[]) -- the entry
+ * Tests for UmiExtractTrimmer.processRecords(FastqRecord[]), the entry
  * point BlockOfWork actually calls, as opposed to processRecord(FastqRecord)
  * which the other UmiExtractTrimmer test classes exercise directly.
  *
  * UMIEXTRACT renames a record from its OWN leading bases. Handed a 2-element
  * array (symmetric PE mode: both mates in one call), it would previously
- * rename both mates independently from their own, different leading bases --
- * silently desynchronising mate names and chopping real bases off whichever
- * mate isn't actually the barcode/UMI read. It now refuses that call shape
- * outright instead of corrupting data.
+ * rename both mates independently from their own, different leading bases.
+ * That desynchronised mate names with no error raised, and chopped real bases
+ * off whichever mate is not the barcode/UMI read. It now refuses that call
+ * shape outright instead of corrupting data.
  */
 public class UmiExtractTrimmerProcessRecordsTest {
 
@@ -65,7 +65,7 @@ public class UmiExtractTrimmerProcessRecordsTest {
     public void testTwoElementArray_symmetricPEMode_throws() {
         // This is exactly the call shape BlockOfWork's symmetric (non-per-mate,
         // non-technicalRead) PE branch uses: both mates in one array. Must
-        // refuse rather than silently rename+corrupt both independently.
+        // refuse, instead of renaming and corrupting both independently.
         UmiExtractTrimmer trimmer = new UmiExtractTrimmer("4");
         FastqRecord[] in = {
                 makeRecord("pair/1", "TTTGACGTACGT"),
@@ -82,7 +82,7 @@ public class UmiExtractTrimmerProcessRecordsTest {
     @Test
     public void testThreeElementArray_alsoThrows() {
         // Not a real Trimmomatic call shape, but the guard is a plain length
-        // check ("> 1"), not a hardcoded "== 2" -- confirm it generalises.
+        // check ("> 1"), not a hardcoded "== 2", confirm it generalises.
         UmiExtractTrimmer trimmer = new UmiExtractTrimmer("4");
         FastqRecord[] in = {
                 makeRecord("a", "TTTGACGT"),

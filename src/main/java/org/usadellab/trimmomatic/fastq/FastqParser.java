@@ -90,7 +90,7 @@ public class FastqParser implements Closeable {
 				if (!seqLine.startsWith(";"))
 					seq.append(seqLine.trim());
 			}
-			// seqLine is null (EOF) or the next '>' header — buffer it for the next call
+			// seqLine is null (EOF) or the next '>' header, buffer it for the next call
 			fastaBufferedHeader = seqLine;
 
 			String sequence = seq.toString().toUpperCase();
@@ -150,13 +150,13 @@ public class FastqParser implements Closeable {
 			for (int i = 0; i < PREREAD_COUNT; i++) {
 				parseOne();
 				if (current == null) {
-					break; // EOF — stop preread early
+					break; // EOF, stop preread early
 				}
 				deque.add(current);
 				accumulateHistogram(current);
 				prereadsBytes += current.getRecordLength();
 				if (prereadsBytes >= PREREAD_MAX_BYTES) {
-					break; // byte budget exhausted — enough data for phred detection
+					break; // byte budget exhausted, enough data for phred detection
 				}
 			}
 		}
@@ -165,7 +165,7 @@ public class FastqParser implements Closeable {
 
 	/**
 	 * Open a FASTA file (optionally compressed) and prime the first record.
-	 * Phred detection is skipped — callers must supply phredOffset=33 beforehand.
+	 * Phred detection is skipped, callers must supply phredOffset=33 beforehand.
 	 */
 	public void openFasta(File input) throws IOException {
 		posTrackInputStream = new PositionTrackingInputStream(new FileInputStream(input), input.length());
@@ -194,7 +194,7 @@ public class FastqParser implements Closeable {
 
 	public void close() throws IOException {
 		// open() may not have completed (e.g. FileInputStream threw before reader
-		// was assigned) — close() must still be safe to call in that case.
+		// was assigned), close() must still be safe to call in that case.
 		if (reader != null)
 			reader.close();
 	}

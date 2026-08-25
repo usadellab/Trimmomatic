@@ -13,12 +13,12 @@ import org.usadellab.trimmomatic.fastq.FastqRecord;
  * These tests verify the dynamic-growth fix introduced in V0.42.
  *
  * Covered here:
- *   - Read exactly at initial capacity (1000 bp) — no crash
- *   - Read one beyond initial capacity (1001 bp) — triggers grow, no crash
- *   - Very long reads (5000 bp, 10 000 bp, 100 000 bp) — no crash
- *   - Sequential reads of increasing length — all passes
- *   - Short read processed after a grow — still works
- *   - Concurrent access from multiple threads — no exception
+ *   - Read exactly at initial capacity (1000 bp), no crash
+ *   - Read one beyond initial capacity (1001 bp), triggers grow, no crash
+ *   - Very long reads (5000 bp, 10 000 bp, 100 000 bp), no crash
+ *   - Sequential reads of increasing length, all passes
+ *   - Short read processed after a grow, still works
+ *   - Concurrent access from multiple threads, no exception
  */
 public class MaximumInformationTrimmerLongReadTest {
 

@@ -53,7 +53,7 @@ import org.usadellab.trimmomatic.fastq.FastqRecord;
  *
  * <p><b>Zero-allocation k-mer scan.</b>  The interior scan loop converts each
  * read position to a 12-bit integer key (2 bits per base, A=0 C=1 G=2 T=3)
- * and looks up a flat {@code List<int[]>[4096]} table — no String creation, no
+ * and looks up a flat {@code List<int[]>[4096]} table, with no String creation and no
  * HashMap boxing.  For a 50 kb read this eliminates ~50 000 per-position String
  * allocations per thread, substantially reducing GC heap pressure under 40-thread
  * parallelism.
@@ -75,7 +75,7 @@ import org.usadellab.trimmomatic.fastq.FastqRecord;
  * as readily as degraded adapter.  Any unseeded brute-force scan over a window of
  * start positions fails the same way, which is why neither terminal scan uses one.
  *
- * <p>Closing that gap needs a discriminator other than the edit threshold —
+ * <p>Closing that gap needs a discriminator other than the edit threshold:
  * base qualities at the match, a positional prior, or complexity weighting so
  * that low-complexity matches are required to show more evidence than
  * high-complexity ones.  A uniform threshold cannot separate the two.
@@ -307,7 +307,9 @@ public class LongReadTrimmer implements Trimmer {
     // -----------------------------------------------------------------------
     // Sequence utilities
 
-    private static String reverseComplement(String seq) {
+    // Package-private so OrientTrimmer can reuse these primitives. Keeping them
+    // private would mean a second copy of the same sequence and edit-distance code.
+    static String reverseComplement(String seq) {
         int len = seq.length();
         StringBuilder sb = new StringBuilder(len);
         for (int i = len - 1; i >= 0; i--) sb.append(complement(seq.charAt(i)));
@@ -330,7 +332,7 @@ public class LongReadTrimmer implements Trimmer {
      * ambiguous.  Avoids all heap allocation; the result is used directly as
      * an index into {@link #kmerTable}.
      */
-    private static int encodeKmer(char[] chars, int offset, int k) {
+    static int encodeKmer(char[] chars, int offset, int k) {
         int code = 0;
         for (int i = 0; i < k; i++) {
             int b = baseCode(chars[offset + i]);
@@ -340,7 +342,7 @@ public class LongReadTrimmer implements Trimmer {
         return code;
     }
 
-    private static int baseCode(char c) {
+    static int baseCode(char c) {
         return switch (c) {
             case 'A' -> 0;
             case 'C' -> 1;
@@ -371,7 +373,7 @@ public class LongReadTrimmer implements Trimmer {
      * character (t) selects its mask.  N in either string is treated as a wildcard
      * by setting all four bits for that position.
      */
-    private static int editDistanceBP(String s, int sOff,
+    static int editDistanceBP(String s, int sOff,
                                       String t, int tOff,
                                       int len, int maxEdits) {
         long peqA = 0L, peqC = 0L, peqG = 0L, peqT = 0L;
@@ -493,7 +495,7 @@ public class LongReadTrimmer implements Trimmer {
         // running first: a terminal scan can accept a shifted partial alignment
         // and clip through an adapter, and the interior scan then no longer sees
         // a full adapter to remove.  That happens whenever one adapter is nested
-        // in another -- for LSK114, seq[1..17] of the 18 bp 3' adapter is exactly
+        // in another, for LSK114, seq[1..17] of the 18 bp 3' adapter is exactly
         // the first 17 bases of the 5' adapter's reverse complement, so the 3'
         // scan matches the longer adapter one base late and strands the first
         // base.  Scanning the whole read keeps the full-length hit available.
@@ -570,8 +572,8 @@ public class LongReadTrimmer implements Trimmer {
      * Returns {@code seq}'s first {@code len} characters in a reusable per-thread
      * buffer, avoiding a fresh {@code toCharArray()} allocation per call.
      *
-     * <p>Each record previously allocated three of these -- one in each terminal
-     * scan and one in the interior scan -- plus one more per emitted fragment via
+     * <p>Each record previously allocated three of these, one in each terminal
+     * scan and one in the interior scan, plus one more per emitted fragment via
      * {@link #clipFragment}.  At PacBio HiFi read lengths (15.5 kb average) that is
      * ~31 kB per array, and the class already claims a zero-allocation scan.
      *
@@ -744,7 +746,7 @@ public class LongReadTrimmer implements Trimmer {
      * <p>The k-mer scan uses a flat 4096-entry integer-indexed table
      * ({@link #kmerTable}) and encodes each read position as a 12-bit integer
      * via {@link #encodeKmer}.  This avoids all String allocation in the scan
-     * loop — for a 50 kb read that is ~50 000 eliminated String objects per
+     * loop. For a 50 kb read that is ~50 000 eliminated String objects per
      * thread compared with the previous {@code seq.substring()} approach.
      *
      * <p>Candidate positions are verified by {@link #bestMatchAt}, which
@@ -758,7 +760,7 @@ public class LongReadTrimmer implements Trimmer {
         int terminalZone = minOverlap;
 
         char[] seqChars = readChars(seq, seqLen);
-        // Candidates go into a reusable int[] rather than a HashSet<Integer>.  The
+        // Candidates go into a reusable int[] instead of a HashSet<Integer>.  The
         // set allocated one hash table plus one boxed Integer per candidate for
         // every read, which dominated allocation once this scan started running on
         // PacBio HiFi: 3.09M reads at 15.5 kb average.  Sorting then skipping equal
@@ -829,7 +831,7 @@ public class LongReadTrimmer implements Trimmer {
             // Only accept the full adapter; partial interior matches are rejected.
             // The check is a BOUNDS check only.  It previously also subtracted
             // terminalZone, which excluded any adapter ending within minOverlap
-            // of the 3' end -- a region the 3' terminal clip cannot reach either,
+            // of the 3' end, a region the 3' terminal clip cannot reach either,
             // because the surviving overlap there is below minOverlap.
             if (seqLen - readStart < adapterLen) continue;
 

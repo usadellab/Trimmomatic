@@ -30,7 +30,7 @@ public class Trimmomatic {
 
 			// The placeholder is only substituted when the git-commit-id plugin runs
 			// successfully.  If it didn't (source tarball, no git history, etc.) the
-			// raw Maven placeholder string is left in the file — skip it in that case.
+			// raw Maven placeholder string is left in the file, skip it in that case.
 			StringBuilder sb = new StringBuilder(version);
 			if (!hash.isEmpty() && !hash.startsWith("${")) {
 				sb.append('+').append(hash);

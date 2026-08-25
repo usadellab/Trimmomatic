@@ -8,21 +8,21 @@ import org.usadellab.trimmomatic.fastq.FastqRecord;
  * Extracts a cell barcode of <cbLength> bases followed by a UMI of
  * <umiLength> bases, both from the 5' end of the read, appends both to the
  * read name (separated by <separator>, default "_"), and trims both off the
- * sequence. Unlike UMIEXTRACT, no leftover payload is required -- a read
+ * sequence. Unlike UMIEXTRACT, no leftover payload is required, a read
  * that is exactly cbLength + umiLength bases (the common case for droplet
  * platforms where the whole read IS the barcode/UMI construct, e.g. 10x
  * Chromium R1) survives with a zero-length sequence; it is dropped only if
  * shorter than that.
  *
- * A distinct step from UMIEXTRACT rather than an overloaded 2-arg form of
- * it: UMIEXTRACT:<length>:<separator> already uses a 2nd colon-arg for a
- * separator string, so reusing that shape for a second length would be
- * ambiguous to both the parser and to a human reading a script.
+ * This is a separate step from UMIEXTRACT. An overloaded 2-arg form was not
+ * possible, because UMIEXTRACT:<length>:<separator> already uses its 2nd
+ * colon-arg for a separator string. Reusing that shape for a second length
+ * would be ambiguous to the parser and to a human reading a script.
  *
- * Does not whitelist-correct the barcode -- see UMIDROPLETCORRECT for that.
+ * Does not whitelist-correct the barcode, see UMIDROPLETCORRECT for that.
  *
  * The read is renamed as: @original_name<separator><CB bases><separator><UMI bases>
- * -- bare sequences, no "CB:"/"UMI:" labels, matching umi_tools extract's own
+ * These are bare sequences, no "CB:"/"UMI:" labels, matching umi_tools extract's own
  * convention so umi_tools dedup/count's default read-name parser (last
  * underscore-delimited, expects a bare nucleotide string) can consume this
  * directly.
@@ -54,8 +54,8 @@ public class UmiSplitTrimmer extends AbstractSingleRecordTrimmer {
     }
 
     /**
-     * Same symmetric-mode hazard as UMIEXTRACT -- see its processRecords() for
-     * the full explanation. Refuse rather than desync mate names.
+     * Same symmetric-mode hazard as UMIEXTRACT, see its processRecords() for
+     * the full explanation. Refusing keeps mate names in sync.
      */
     @Override
     public FastqRecord[] processRecords(FastqRecord[] in) {
@@ -77,7 +77,7 @@ public class UmiSplitTrimmer extends AbstractSingleRecordTrimmer {
         String seq = in.getSequence();
         String cb = seq.substring(0, cbLength);
         String umi = seq.substring(cbLength, totalLength);
-        // Bare sequences, no "CB:"/"UMI:" labels -- matches umi_tools extract's own
+        // Bare sequences, no "CB:"/"UMI:" labels, matches umi_tools extract's own
         // convention (@ReadName_BARCODE_UMI) so umi_tools dedup/count's default
         // read-name parser (last-underscore-delimited, expects a bare nucleotide
         // string) can consume this directly without a label getting in the way.

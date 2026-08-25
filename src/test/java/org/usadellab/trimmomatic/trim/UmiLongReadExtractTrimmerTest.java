@@ -51,7 +51,7 @@ public class UmiLongReadExtractTrimmerTest {
     public void testAnchorShiftedByOneBase_foundWithIndelShift() {
         UmiLongReadExtractTrimmer trimmer = new UmiLongReadExtractTrimmer("GTATCGTGT:NNNN:0:2");
 
-        // One extra base inserted before the anchor -- anchor now starts at offset 1.
+        // One extra base inserted before the anchor, anchor now starts at offset 1.
         FastqRecord rec = makeRecord("r1", "X" + "GTATCGTGT" + "AACC" + "PAYLOAD");
         FastqRecord result = trimmer.processRecord(rec);
 
@@ -88,7 +88,7 @@ public class UmiLongReadExtractTrimmerTest {
     public void testAnchorTwoMismatches_beyondBudget_drops() {
         UmiLongReadExtractTrimmer trimmer = new UmiLongReadExtractTrimmer("GTATCGTGT:NNNN:1:0");
 
-        // Two substitutions in the anchor -- beyond maxMismatch=1.
+        // Two substitutions in the anchor, beyond maxMismatch=1.
         FastqRecord rec = makeRecord("r1", "GAATAGTGT" + "AACC" + "PAYLOAD");
         assertNull(trimmer.processRecord(rec));
     }
