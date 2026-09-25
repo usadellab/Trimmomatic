@@ -490,10 +490,12 @@ public class IlluminaClippingTrimmer implements Trimmer {
 				if (ch1 == 'N' || ch2 == 'N')
 					likelihood[i] = 0;
 				else if (ch1 != ch2) {
+					// Q/10 per mismatch, as in simple mode (calculateDifferenceQuality) and the
+					// README; integer division would charge nothing below Q10 and int(Q/10) above.
 					if (qual1 < qual2)
-						likelihood[i] = -qual1 / 10;
+						likelihood[i] = -qual1 / 10.0f;
 					else
-						likelihood[i] = -qual2 / 10;
+						likelihood[i] = -qual2 / 10.0f;
 				} else
 					likelihood[i] = LOG10_4;
 			}
