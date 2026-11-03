@@ -126,8 +126,14 @@ public class TrimmomaticPE extends Trimmomatic {
 
 				done = done1 && done2;
 
-				if (pairingValidator != null)
-					pairingValidator.validatePairs(recs1, recs2);
+				if (pairingValidator != null && !pairingValidator.validatePairs(recs1, recs2)) {
+					// Register it with the holder first: the background writers only stop
+					// waiting for more blocks once the holder carries an exception.
+					RuntimeException ex = new RuntimeException(
+							"Pair validation failed, the input files are not in the same order");
+					exceptionHolder.setException(ex);
+					throw ex;
+				}
 
 				BlockOfRecords bor = new BlockOfRecords(recs1, recs2);
 				BlockOfWork work = new BlockOfWork(logger, trimmers, trimmers1, trimmers2, bor, done, true,

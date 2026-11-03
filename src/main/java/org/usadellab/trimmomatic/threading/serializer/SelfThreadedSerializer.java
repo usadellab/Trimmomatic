@@ -27,9 +27,20 @@ public class SelfThreadedSerializer extends Serializer implements Runnable {
 	}
 
 	public void close() throws Exception {
-		while (thread.isAlive()) {
-			exceptionHolder.rethrow();
-			thread.join(100);
+		try {
+			while (thread.isAlive()) {
+				exceptionHolder.rethrow();
+				thread.join(100);
+			}
+		} catch (Exception e) {
+			// The run failed, the output is incomplete anyway. Release the file handle
+			// without writing a trailer.
+			try {
+				stream.close();
+			} catch (Exception closeFailure) {
+				e.addSuppressed(closeFailure);
+			}
+			throw e;
 		}
 
 		super.close();

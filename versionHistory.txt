@@ -113,6 +113,7 @@ Version 0.43: Feature: UMILONGREADEXTRACT trimmer: generic UMI extractor for ONT
               Feature: UMIDIMERCORRECT trimmer: whitelist-corrects dimer-block cell barcodes (scBUC-seq/scCOLOR-seq)
               Feature: UMIINDEXMERGE trimmer: merges a UMI from a separate index-read FASTQ into the read name (Illumina xGen UDI-UMI); safe in symmetric paired-end mode
               Feature: ORIENT trimmer: puts long reads on a common strand by locating a known anchor sequence and reverse-complementing the reads carrying it on the opposite strand. Single-end only
+              Fix: -validatePairs now stops with an error on a mismatched pair
               Fix: UMIDIMERCORRECT documentation gave 14bp as the scCOLOR-seq UMI length. The correct length is 16bp, matching the protocol authors' own tooling
               Docs: UMIDIMERCORRECT now states its input precondition. Barcode and UMI must be the leading bases. Raw scCOLOR-seq reads do not meet this
               Docs: README UMI section reorganised with a platform/protocol to step decision table
